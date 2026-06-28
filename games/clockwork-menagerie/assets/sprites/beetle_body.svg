@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <!-- Clockwork Menagerie — beetle body. Tier-1 final, flat vector. -->
+  <!-- legs (drawn first, behind body) -->
+  <rect x="16" y="58" width="7" height="20" rx="3" fill="#3d3450"/>
+  <rect x="73" y="58" width="7" height="20" rx="3" fill="#3d3450"/>
+  <rect x="24" y="66" width="7" height="18" rx="3" fill="#3d3450"/>
+  <rect x="65" y="66" width="7" height="18" rx="3" fill="#3d3450"/>
+  <!-- foot caps -->
+  <circle cx="19.5" cy="78" r="4" fill="#7c5a8c"/>
+  <circle cx="76.5" cy="78" r="4" fill="#7c5a8c"/>
+  <!-- shell / carapace body -->
+  <ellipse cx="48" cy="50" rx="34" ry="28" fill="#c98a3a" stroke="#5a3a16" stroke-width="2"/>
+  <!-- shell seam down the middle -->
+  <line x1="48" y1="24" x2="48" y2="76" stroke="#5a3a16" stroke-width="1.5" opacity="0.5"/>
+  <!-- belly / faceplate -->
+  <ellipse cx="48" cy="56" rx="18" ry="13" fill="#e9c27a"/>
+  <!-- eyes -->
+  <circle cx="40" cy="52" r="3.5" fill="#2a2438"/>
+  <circle cx="56" cy="52" r="3.5" fill="#2a2438"/>
+  <circle cx="41.2" cy="50.8" r="1.1" fill="#f4ead8"/>
+  <circle cx="57.2" cy="50.8" r="1.1" fill="#f4ead8"/>
+  <!-- gear socket area (empty seat, top-left of shell) — a recessed circular bay -->
+  <circle cx="34" cy="34" r="11" fill="#3d3450" stroke="#5a3a16" stroke-width="1.5"/>
+  <circle cx="34" cy="34" r="4" fill="#2a2438"/>
+  <!-- visible joint spot (rear-right leg pivot) — a marked pivot to oil -->
+  <circle cx="69" cy="60" r="6" fill="#7c5a8c" stroke="#5a3a16" stroke-width="1.5"/>
+  <circle cx="69" cy="60" r="2.2" fill="#2a2438"/>
+  <!-- mainspring wind-up stub on top -->
+  <rect x="46" y="14" width="4" height="10" fill="#8a6a3a"/>
+  <circle cx="48" cy="14" r="5" fill="none" stroke="#8a6a3a" stroke-width="2.5"/>
+</svg>

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ReseatStepDefinition" load_steps=2 format=3 uid="uid://cwmbeetlereseat01"]
+
+[ext_resource type="Script" path="res://src/data/ReseatStepDefinition.cs" id="1_reseat"]
+
+[resource]
+script = ExtResource("1_reseat")
+StepId = "reseat"
+CompletionSettleTime = 0.45
+HighlightPulsePeriod = 1.2
+HotspotBaseRadius = 48.0
+SnapRadius = 36.0
+GrabFromDistance = 60.0
+GearFollowLerp = 0.6
+GearReturnTime = 0.3
+RequireAngleMatch = false
+SnapAngleTolerance = 20.0
+MagnetHintRadius = 48.0

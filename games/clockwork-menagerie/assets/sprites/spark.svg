@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Clockwork Menagerie — sparkle for the come-alive payoff. Tier-1 final. -->
+  <!-- four-point twinkle -->
+  <path d="M12 1 L14 10 L23 12 L14 14 L12 23 L10 14 L1 12 L10 10 Z"
+        fill="#f4ead8"/>
+  <!-- warm core -->
+  <circle cx="12" cy="12" r="2.4" fill="#e9c27a"/>
+  <!-- tiny accent dots -->
+  <circle cx="19" cy="5" r="1.4" fill="#e8836b"/>
+  <circle cx="5" cy="18" r="1.2" fill="#e9c27a"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <!-- Clockwork Menagerie — faint "ghost" socket target for the gear. Tier-1 final. -->
+  <!-- Drawn faint; gameplay brightens/pulses it via modulate when the gear is near. -->
+  <g opacity="0.45">
+    <!-- dashed outer ring matching the gear's rim radius -->
+    <circle cx="20" cy="20" r="13" fill="none" stroke="#7c5a8c" stroke-width="2"
+            stroke-dasharray="4 3"/>
+    <!-- hub ghost -->
+    <circle cx="20" cy="20" r="7" fill="none" stroke="#7c5a8c" stroke-width="1.5"/>
+    <!-- center alignment pip -->
+    <circle cx="20" cy="20" r="2.5" fill="#7c5a8c"/>
+  </g>
+</svg>

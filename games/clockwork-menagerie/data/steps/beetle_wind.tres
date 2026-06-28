@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WindStepDefinition" load_steps=2 format=3 uid="uid://cwmbeetlewind01"]
+
+[ext_resource type="Script" path="res://src/data/WindStepDefinition.cs" id="1_wind"]
+
+[resource]
+script = ExtResource("1_wind")
+StepId = "wind"
+CompletionSettleTime = 0.45
+HighlightPulsePeriod = 1.2
+HotspotBaseRadius = 48.0
+TargetTurns = 2.5
+WindDirectionClockwise = true
+WindRingOuterRadius = 110.0
+WindRingInnerRadius = 18.0
+WindTickDegrees = 30.0
+WindMaxDeltaPerFrameDeg = 25.0
+WindRetainOnRelease = true

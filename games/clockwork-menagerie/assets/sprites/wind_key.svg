@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- Clockwork Menagerie — wind-up key. Tier-1 final, flat vector. -->
+  <!-- shaft -->
+  <rect x="21" y="20" width="6" height="22" rx="2" fill="#c98a3a" stroke="#5a3a16" stroke-width="1.5"/>
+  <!-- bow: two looped handles -->
+  <circle cx="16" cy="14" r="9" fill="none" stroke="#c98a3a" stroke-width="4.5"/>
+  <circle cx="32" cy="14" r="9" fill="none" stroke="#c98a3a" stroke-width="4.5"/>
+  <!-- bow outline accents -->
+  <circle cx="16" cy="14" r="9" fill="none" stroke="#5a3a16" stroke-width="1" opacity="0.6"/>
+  <circle cx="32" cy="14" r="9" fill="none" stroke="#5a3a16" stroke-width="1" opacity="0.6"/>
+  <!-- key bit (teeth at the bottom) -->
+  <rect x="18" y="40" width="3.5" height="6" fill="#8a6a3a"/>
+  <rect x="26.5" y="40" width="3.5" height="6" fill="#8a6a3a"/>
+  <!-- highlight glint on shaft -->
+  <rect x="23" y="22" width="1.5" height="16" rx="0.75" fill="#e9c27a"/>
+</svg>

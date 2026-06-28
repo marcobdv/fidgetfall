@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Clockwork Menagerie — tinkerer pointer (pointing hand). Tier-1 final. -->
+  <!-- Hotspot at the index fingertip (~6,4) for use as a game cursor. -->
+  <!-- pointing finger + fist mitten silhouette -->
+  <path d="M6 4
+           q-1.5 0 -1.5 1.5 v9
+           l-2.5 1 q-1.5 0.6 -1 2.2 l2 6
+           q0.8 2.3 3.2 2.3 h7
+           q3 0 3 -3 v-7
+           q0 -1.5 -1.5 -1.5 q-1.5 0 -1.5 1.5
+           v-1 q0 -1.5 -1.5 -1.5 q-1.5 0 -1.5 1.5
+           v-1 q0 -1.5 -1.5 -1.5 q-1.5 0 -1.5 1.5
+           v-7.5 q0 -1.5 -1.5 -1.5 z"
+        fill="#e9c27a" stroke="#5a3a16" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- cuff -->
+  <rect x="3.5" y="24" width="12.5" height="4" rx="2" fill="#7c5a8c" stroke="#5a3a16" stroke-width="1"/>
+</svg>
