@@ -1,0 +1,22 @@
+# Pi locally-installed packages & trust (keep settings.json, ignore fetched pkgs)
+.pi/npm/
+.pi/git/
+.pi/trust.json
+
+# Godot 4 + .NET (per-game artifacts; games also have their own .gitignore)
+**/.godot/
+**/.mono/
+**/bin/
+**/obj/
+**/build/
+**/export/
+*.user
+
+# Node (Pi tooling)
+node_modules/
+
+# OS / IDE
+.DS_Store
+.vs/
+.idea/
+*.suo

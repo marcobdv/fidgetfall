@@ -1,0 +1,27 @@
+{
+  "$comment": "Fidgetfall studio Pi configuration. See https://pi.dev. Models use fuzzy names resolved by Pi against your configured providers; override per-role in .pi/agents/*.md frontmatter.",
+  "defaultModel": "opus",
+  "steeringMode": "one-at-a-time",
+  "followUpMode": "one-at-a-time",
+  "defaultProjectTrust": true,
+  "enableInstallTelemetry": false,
+  "packages": [
+    "npm:@tintinweb/pi-subagents"
+  ],
+  "permissions": {
+    "allow": [
+      "bash(dotnet build*)",
+      "bash(dotnet test*)",
+      "bash(dotnet run*)",
+      "bash(godot*)",
+      "bash(git status*)",
+      "bash(git diff*)",
+      "bash(git add*)",
+      "bash(git log*)"
+    ],
+    "ask": [
+      "bash(git push*)",
+      "bash(rm *)"
+    ]
+  }
+}

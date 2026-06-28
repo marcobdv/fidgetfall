@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Generated vector art (Tier 1) — a wind-up clockwork critter. -->
+  <!-- body -->
+  <rect x="5" y="9" width="14" height="11" rx="3" fill="#c98a3a" stroke="#5a3a16" stroke-width="1"/>
+  <!-- belly plate -->
+  <rect x="8" y="12" width="8" height="6" rx="1.5" fill="#e9c27a"/>
+  <!-- wind-up key -->
+  <rect x="11" y="3" width="2" height="5" fill="#8a6a3a"/>
+  <circle cx="12" cy="3" r="2.4" fill="none" stroke="#8a6a3a" stroke-width="1.4"/>
+  <!-- eyes -->
+  <circle cx="9" cy="13" r="1.4" fill="#1b2845"/>
+  <circle cx="15" cy="13" r="1.4" fill="#1b2845"/>
+  <circle cx="9.5" cy="12.6" r="0.5" fill="#fff"/>
+  <circle cx="15.5" cy="12.6" r="0.5" fill="#fff"/>
+  <!-- gear cheek -->
+  <circle cx="12" cy="17" r="2" fill="none" stroke="#5a3a16" stroke-width="0.8"/>
+  <!-- legs -->
+  <rect x="7" y="20" width="3" height="3" fill="#5a3a16"/>
+  <rect x="14" y="20" width="3" height="3" fill="#5a3a16"/>
+</svg>
