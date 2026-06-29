@@ -122,10 +122,23 @@ fidgetfall/
 ├── docs/
 │   ├── pipeline.md           # phase-by-phase production process
 │   ├── roles.md              # index of roles + delegation guide
-│   └── conventions.md        # code style, naming, project layout
-└── games/                    # one subdirectory per game project
-    └── <game-slug>/          # a self-contained Godot C# project
+│   ├── conventions.md        # code style, naming, project layout
+│   ├── architecture.md       # how the harness/orchestration is wired
+│   ├── orchestration-playbook.md  # the reusable wave pipeline
+│   └── adr/                  # Architecture Decision Records (the "why")
+└── games/                    # prototypes + the template (sample-clockwork)
+    ├── README.md             # portfolio index (links to graduated game repos)
+    └── <game-slug>/          # a self-contained Godot C# project (until greenlit)
 ```
+
+**Architecture & decisions:** harness wiring is in `docs/architecture.md`, the reusable
+production recipe in `docs/orchestration-playbook.md`, and the *why* behind non-obvious
+choices in `docs/adr/`. Consult an ADR before re-opening a settled decision.
+
+**Games graduate (ADR-0008):** prototypes live under `games/`; once greenlit they move
+to their own repo (own CI/releases) and this repo keeps only a link in
+`games/README.md`. `sample-clockwork` stays here — it's the verified template, not a
+product. The Producer decides graduation at the greenlight gate.
 
 ## 6. Engineering conventions (summary — full text in `docs/conventions.md`)
 

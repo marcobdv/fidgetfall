@@ -48,10 +48,23 @@ Full definitions and a delegation guide: [`docs/roles.md`](docs/roles.md).
 ## Repository layout
 
 ```
-.pi/agents/   role subagents      docs/         studio process & conventions
-.pi/skills/   Godot/C# skills      games/        one Godot C# project per game
+.pi/agents/   role subagents      docs/         studio process, ADRs & conventions
+.pi/skills/   Godot/C# skills      games/        prototypes + the template (graduated games live in their own repos)
 AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
 ```
+
+## How it's set up
+
+- **[docs/architecture.md](docs/architecture.md)** — how the harness is wired (host →
+  studio → products) and the orchestration model.
+- **[docs/adr/](docs/adr/README.md)** — Architecture Decision Records: the *why*
+  behind the non-obvious choices (Pi as host, net8.0, asset tiers, repo strategy, …).
+- **[docs/orchestration-playbook.md](docs/orchestration-playbook.md)** — the reusable
+  wave pipeline the Orchestrator runs to take a game from concept to a verified slice.
+
+> **Games:** prototypes live in `games/`; once greenlit they **graduate to their own
+> repo** (own CI + releases), and this repo links to them from `games/README.md`. See
+> [ADR-0008](docs/adr/0008-games-graduate-to-own-repos.md).
 
 ## Status
 
