@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Installs Godot 4.7 (.NET/Mono) and the .NET SDK Godot ships with,
+      # and exports $GODOT to the engine binary.
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.0
+          use-dotnet: true
+
+      - name: Build
+        run: dotnet build
+
+      - name: Import (generates C# glue + imports assets)
+        run: godot --headless --import --path . || true
+
+      - name: Test (GdUnit4, headless)
+        env:
+          GODOT_BIN: ${{ env.GODOT }}
+        run: dotnet test --no-build
