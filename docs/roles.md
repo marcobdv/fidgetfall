@@ -28,25 +28,26 @@ Use this as the routing table.
 
 ## Org chart
 
-```
-                         Human (vision & greenlights)
-                                   │
-                         Studio Orchestrator (Pi session)
-                                   │
-            ┌──────────────┬───────┴────────┬───────────────┐
-        Producer     Creative Director   (routes work)    (integrates)
-            │
-   ┌────────┼─────────────┬──────────────┬───────────────┬────────────┐
- Design   Engineering     Art           Audio           Quality       Ops
-   │           │           │              │               │            │
- game-       lead-      concept-       sound-          qa-tester    build-
- designer    programmer  artist        designer                     engineer
- level-      gameplay-   game-         composer
- designer    programmer  artist
- narrative-  tools-      animator
- designer    programmer
- ux-ui-      technical-
- designer    artist
+```mermaid
+flowchart TD
+    Human["🧑 Human"] --> Orch["🎬 Studio Orchestrator"]
+    Orch --> Prod["Producer"] & CD["Creative Director"]
+    Orch --> Design & Eng & Art & Audio & QualityOps
+    subgraph Design["Design"]
+        gd["game-designer"] ~~~ ld["level-designer"] ~~~ nd["narrative-designer"] ~~~ ux["ux-ui-designer"]
+    end
+    subgraph Eng["Engineering"]
+        lp["lead-programmer"] ~~~ gp["gameplay-programmer"] ~~~ tp["tools-programmer"] ~~~ ta["technical-artist"]
+    end
+    subgraph Art["Art"]
+        ca["concept-artist"] ~~~ ga["game-artist"] ~~~ an["animator"]
+    end
+    subgraph Audio["Audio"]
+        sd["sound-designer"] ~~~ co["composer"]
+    end
+    subgraph QualityOps["Quality &amp; Ops"]
+        qa["qa-tester"] ~~~ be["build-engineer"]
+    end
 ```
 
 ## Delegation tips

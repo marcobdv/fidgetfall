@@ -6,23 +6,22 @@ recorded as [ADRs](adr/README.md); this doc is the map that ties them together.
 
 ## The three layers
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  HOST  (Pi, or any agent host: read/bash/edit/write + subagents) │  ADR-0001
-│   • runs the agent loop and spawns subagents                 │
-├─────────────────────────────────────────────────────────────┤
-│  STUDIO  (host-portable markdown + repo conventions)         │
-│   • AGENTS.md ............ studio handbook (loaded by host)   │
-│   • .pi/agents/*.md ...... 17 role subagents      (ADR-0002) │
-│   • .pi/skills/*/SKILL.md  13 reusable capabilities          │
-│   • .pi/settings.json .... models, packages, permissions     │
-│   • docs/ ................ pipeline, conventions, ADRs, this  │
-├─────────────────────────────────────────────────────────────┤
-│  PRODUCTS  (Godot 4.7 / C# games)                            │
-│   • games/sample-clockwork  verified template + smoke test   │
-│   • games/<prototype>/ .... until greenlit, then graduate    │  ADR-0008
-│   • marcobdv/<game> ....... graduated games (own repo + CI)  │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph HOST["HOST — Pi, or any agent host · ADR-0001"]
+        H1["agent loop + subagent spawning"]
+    end
+    subgraph STUDIO["STUDIO — host-portable markdown + conventions"]
+        S1["AGENTS.md<br/>handbook"]
+        S2[".pi/agents<br/>17 roles"]
+        S3[".pi/skills<br/>13 skills"]
+        S4["docs/<br/>pipeline · conventions · ADRs"]
+    end
+    subgraph PRODUCTS["PRODUCTS — Godot 4.7 / C# games"]
+        P1["sample-clockwork<br/>verified template"]
+        P2["prototypes → graduate<br/>ADR-0008"]
+    end
+    HOST --> STUDIO --> PRODUCTS
 ```
 
 The studio layer is **host-portable** (ADR-0001): it is plain markdown + conventions,
@@ -42,6 +41,21 @@ subagents).
 - Multi-phase work runs as **waves** the Orchestrator sequences (parallel where
   independent, serial across dependencies) — see the
   [orchestration playbook](orchestration-playbook.md).
+
+```mermaid
+sequenceDiagram
+    actor Human
+    participant Orch as Studio Orchestrator
+    participant Role as Role subagent
+    participant Repo as Repo (artifacts)
+    Human->>Orch: request ("build a prototype")
+    Orch->>Role: spawn with brief + task
+    Note over Role: reads AGENTS.md,<br/>docs & skills first
+    Role->>Repo: write artifacts (code/scenes/assets/docs)
+    Role-->>Orch: short summary
+    Orch->>Orch: integrate + verify<br/>(build · test · import · run)
+    Orch-->>Human: report at gate
+```
 
 ## Roles & skills
 

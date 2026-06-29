@@ -24,17 +24,22 @@ Orchestrator (top-level session) owns sequencing.
 This is the sequence used to build `clockwork-menagerie` from concept to a running,
 tested slice.
 
-```
-Design   Creative Director ─▶ Game Designer            (vision ▶ GDD + system spec)
-            │ greenlight gate (human) ─ is it fun / in scope?
-Wave 1   Lead Programmer        (project scaffold + pure logic core; build gate)
-Wave 2   ┌ Game Artist          (Tier-1 sprites)        ┐ parallel — independent
-         ├ Sound Designer        (synth SFX)            │  outputs; QA depends only
-         └ QA Tester             (unit tests on core)   ┘  on Wave-1 core
-            │ QA gate ─ tests green? Orchestrator runs `dotnet test`
-Wave 3   Gameplay Programmer     (Node layer, scenes, input, wire core+assets+SFX)
-Wave 4   Orchestrator            (independent verify: build/test/import/run; fix loop)
-            │ greenlight gate ─ graduate the game? (ADR-0008)
+```mermaid
+flowchart TB
+    CD["Creative Director"] --> GD["Game Designer"] --> GL{{"Greenlight"}}
+    GL --> W1["Wave 1 · Lead Programmer<br/>scaffold + pure core"]
+    W1 --> BG{{"build gate"}}
+    BG --> W2
+    subgraph W2["Wave 2 · parallel (disjoint paths)"]
+        direction LR
+        GA["Game Artist<br/>assets/sprites"]
+        SD["Sound Designer<br/>assets/audio"]
+        QAr["QA Tester<br/>test/"]
+    end
+    W2 --> QG{{"QA gate · dotnet test"}}
+    QG --> W3["Wave 3 · Gameplay Programmer<br/>Node layer + scenes + wiring"]
+    W3 --> W4["Wave 4 · Orchestrator verify<br/>build · test · import · run"]
+    W4 --> G2{{"Greenlight → graduate · ADR-0008"}}
 ```
 
 ### Wave dependencies (what's safe to parallelize)

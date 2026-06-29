@@ -1,14 +1,43 @@
 # Fidgetfall 🎮 — an agentic game studio
 
+![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![engine: Godot 4.7](https://img.shields.io/badge/engine-Godot%204.7-478cbf.svg)
+![C# / .NET 8](https://img.shields.io/badge/C%23-.NET%208-512bd4.svg)
+![harness: Pi](https://img.shields.io/badge/harness-Pi-111.svg)
+
 Fidgetfall is a **game development studio staffed by AI agents**. Every
 traditional role in a game company — producer, designer, programmer, artist,
 animator, sound designer, QA, build engineer — is a specialist [Pi](https://pi.dev)
 subagent with its own focused brief and skill set. They collaborate to design,
-build, test, and ship games made in **Godot 4** with **C# / .NET 9**.
+build, test, and ship games made in **Godot 4.7** with **C# / .NET 8**.
 
 > You bring the vision and the greenlights. The studio does the work.
 
-## How it works
+## 🏗️ Architecture overview
+
+The top-level session is the **Studio Orchestrator**: it delegates to specialist role
+subagents, who pull in skills and write artifacts into the repo — which become the game.
+The whole studio is host-portable markdown + conventions (it runs under Pi, or any agent
+host with subagents).
+
+```mermaid
+flowchart TB
+    Human["🧑 Human<br/>vision &amp; greenlights"] --> Orch["🎬 Studio Orchestrator<br/>(top-level Pi session)"]
+    Orch -->|delegates| Roles
+    subgraph Roles["17 role subagents · .pi/agents"]
+        direction LR
+        Design["Design<br/>game · level · narrative · ux"]
+        Eng["Engineering<br/>lead · gameplay · tools · tech-art"]
+        ArtAudio["Art &amp; Audio<br/>concept · artist · animator · sound · composer"]
+        QO["Quality &amp; Ops<br/>QA · build"]
+    end
+    Roles -->|read| Skills["🧩 13 skills · .pi/skills<br/>Godot/C# + 3 asset tiers"]
+    Roles -->|write artifacts| Repo["📦 Repo<br/>code · scenes · assets · docs · tests"]
+    Repo --> Game["🎮 Godot 4.7 / C# game"]
+    Orch -.->|verify build · test · run| Game
+```
+
+## 🧩 How it works
 
 - **Harness:** [Pi](https://pi.dev), a minimal, extensible TypeScript coding-agent
   harness by Mario Zechner (creator of libGDX).
@@ -19,7 +48,7 @@ build, test, and ship games made in **Godot 4** with **C# / .NET 9**.
 - **The studio handbook** is [`AGENTS.md`](AGENTS.md) — read it to understand the
   whole operation.
 
-## Quick start
+## 🚀 Quick start
 
 1. Install the toolchain and wire up the studio: **[BOOTSTRAP.md](BOOTSTRAP.md)**.
 2. From the repo root, launch Pi:
@@ -34,7 +63,7 @@ build, test, and ship games made in **Godot 4** with **C# / .NET 9**.
 
    The Orchestrator routes each request to the right role(s).
 
-## The team
+## 👥 The team
 
 | Production | Design | Engineering | Art | Audio | Quality / Ops |
 |---|---|---|---|---|---|
@@ -45,7 +74,7 @@ build, test, and ship games made in **Godot 4** with **C# / .NET 9**.
 
 Full definitions and a delegation guide: [`docs/roles.md`](docs/roles.md).
 
-## Repository layout
+## 📂 Repository layout
 
 ```
 .pi/agents/   role subagents      docs/         studio process, ADRs & conventions
@@ -53,7 +82,7 @@ Full definitions and a delegation guide: [`docs/roles.md`](docs/roles.md).
 AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
 ```
 
-## How it's set up
+## 📐 How it's set up
 
 - **[docs/architecture.md](docs/architecture.md)** — how the harness is wired (host →
   studio → products) and the orchestration model.
@@ -66,8 +95,24 @@ AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
 > repo** (own CI + releases), and this repo links to them from `games/README.md`. See
 > [ADR-0008](docs/adr/0008-games-graduate-to-own-repos.md).
 
-## Status
+## 📊 Status
 
-Studio scaffolding is in place. The first game project lives in
-[`games/`](games) once a concept is greenlit. See
-[`docs/pipeline.md`](docs/pipeline.md) for how a game goes from pitch to release.
+The studio is operational and has shipped its first game:
+
+- **17 roles · 13 skills**, all wired and host-portable (verified running under Pi *and*
+  under another agent host).
+- **[`sample-clockwork`](games/sample-clockwork)** — the verified Godot 4.7 / C# template
+  (builds, imports, runs headless, tests pass).
+- **[Clockwork Menagerie](https://github.com/marcobdv/clockwork-menagerie)** — a playable
+  vertical slice the studio designed, built, tested, and graduated to its own repo (CI green).
+
+See [`docs/pipeline.md`](docs/pipeline.md) for how a game goes from pitch to release, and
+[`games/README.md`](games/README.md) for the portfolio.
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 Marco bij de Vaate. The studio harness — roles, skills, docs, and
+tooling — is MIT-licensed; do what you like with it. Games produced by the studio live in
+their own repos and may carry their own licenses, and **sourced or AI-generated assets**
+integrated into a game are tracked per game in `CREDITS.md` and remain under their
+respective licenses.

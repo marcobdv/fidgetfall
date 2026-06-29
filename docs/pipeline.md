@@ -3,6 +3,15 @@
 How a game moves from idea to release at Fidgetfall. Each phase ends in a
 **quality gate** the Producer clears with the human before advancing.
 
+```mermaid
+flowchart LR
+    C["0 · Concept"] --> P1["1 · Pre-production"] --> P2["2 · Prototype"]
+    P2 --> G{{"Greenlight gate<br/>is it fun?"}}
+    G -->|yes| P3["3 · Production"] --> P4["4 · Polish &amp; QA"] --> P5["5 · Release"]
+    G -.->|pivot / iterate| C
+    P5 --> Grad{{"graduate to<br/>own repo · ADR-0008"}}
+```
+
 ## Phase 0 — Concept
 **Goal:** decide if there's a game worth making.
 - `creative-director` → `docs/vision.md` (hook, pillars, tone, references, anti-goals).
