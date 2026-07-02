@@ -1,0 +1,37 @@
+# Harness smoke test: verifies the toolchain + template on every push, using the
+# same sequence BOOTSTRAP.md §4 asks a human to run. sample-clockwork is the
+# fixture (ADR-0008): if this is green, the studio's Godot/C#/test pipeline works.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sample-clockwork:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: games/sample-clockwork
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Setup Godot 4.7 (.NET)
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.0
+          use-dotnet: true
+          include-templates: false   # no exports here; flip on when adding an export job
+      # Only [RequireGodotRuntime] tests need GODOT_BIN, but setting it is cheap:
+      - run: echo "GODOT_BIN=$(which godot)" >> "$GITHUB_ENV"
+      - name: Build C#
+        run: dotnet build
+      - name: Import assets (fresh checkout has no .godot/ cache)
+        run: godot --headless --import --path .
+      - name: Smoke-run Main.tscn for 90 frames
+        run: godot --headless --path . --quit-after 90
+      - name: Test (GdUnit4, headless)
+        run: dotnet test test/
