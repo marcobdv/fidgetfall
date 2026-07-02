@@ -9,14 +9,35 @@ GdUnit4 is the standard test framework for Godot C#. Favor testing **pure C# log
 extracted from nodes; use scene tests only when you need the tree.
 
 ## Setup
-1. Add the package to the project:
-   ```bash
-   cd games/<slug>
-   dotnet add package gdUnit4.api
-   dotnet add package gdUnit4.test.adapter     # VSTest adapter
-   dotnet add package Microsoft.NET.Test.Sdk   # required or `dotnet test` discovers 0 tests
+
+Tests are their **own project** under `games/<slug>/test/`, referencing the game
+csproj — never add test packages to the game project or they ship with exports.
+See `games/sample-clockwork/test/` for the working reference. The pieces:
+
+1. `test/<Slug>.Tests.csproj` (plain `Microsoft.NET.Sdk`):
+   ```xml
+   <Project Sdk="Microsoft.NET.Sdk">
+     <PropertyGroup>
+       <TargetFramework>net8.0</TargetFramework>
+       <Nullable>enable</Nullable>
+       <IsPackable>false</IsPackable>
+       <!-- Godot's source generators flow in via the ProjectReference and need this: -->
+       <GodotProjectDir>$(MSBuildProjectDirectory)/..</GodotProjectDir>
+     </PropertyGroup>
+     <ItemGroup>
+       <PackageReference Include="gdUnit4.api" Version="5.0.0" />
+       <PackageReference Include="gdUnit4.test.adapter" Version="3.0.0" />
+       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+     </ItemGroup>
+     <ItemGroup>
+       <ProjectReference Include="../<Slug>.csproj" />
+     </ItemGroup>
+   </Project>
    ```
-2. Tests live under `games/<slug>/test/`.
+2. In the **game** csproj: `<Compile Remove="test/**/*.cs" />` (the SDK glob would
+   double-compile them) and `<InternalsVisibleTo Include="<Slug>.Tests" />` if tests
+   touch internals.
+3. An empty `test/.gdignore` so the Godot editor doesn't scan/import the test dir.
 
 ## A pure-logic unit test
 
@@ -90,13 +111,16 @@ to host:
 
 ```bash
 cd games/<slug>
-dotnet test                      # pure-logic tests: just works, headless in CI
+dotnet test test/                # pure-logic tests: just works, headless in CI
 
 # only needed when [RequireGodotRuntime] tests exist:
 export GODOT_BIN="/path/to/Godot_v4.7-stable_mono.exe"
 # PowerShell: $env:GODOT_BIN = "C:\path\to\Godot_v4.7-stable_mono.exe"
-dotnet test
+dotnet test test/
 ```
+
+(`dotnet test` needs the explicit `test/` path — the game dir contains the game
+csproj, which has no tests.)
 
 ## Conventions
 - One `[TestSuite]` per unit; name tests `Method_State_Expectation`.

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>SampleClockwork.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- Godot's source generators flow in via the ProjectReference and need this. -->
+    <GodotProjectDir>$(MSBuildProjectDirectory)/..</GodotProjectDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="gdUnit4.api" Version="5.0.0" />
+    <PackageReference Include="gdUnit4.test.adapter" Version="3.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SampleClockwork.csproj" />
+  </ItemGroup>
+</Project>

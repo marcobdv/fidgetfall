@@ -23,8 +23,9 @@ approves milestones; the agents do the work.
 `GODOT_BIN` set to its full path (needed by GdUnit4 for `[RequireGodotRuntime]`
 tests; pure-logic tests run without it). Machine-specific paths live in the
 untracked `LOCAL.md` at the repo root — check there first. The bundled
-`games/sample-clockwork` is verified: builds, imports, runs headless, 10/10 test
-cases pass.
+`games/sample-clockwork` is verified: builds, imports, runs headless, 20/20 test
+cases pass (`dotnet test test/` — tests are their own project, see the
+`godot-testing-gdunit4` skill).
 
 ## 2. Mental model: the studio is the orchestrator
 

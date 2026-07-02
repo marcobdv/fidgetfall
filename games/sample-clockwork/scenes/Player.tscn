@@ -1,15 +1,22 @@
-[gd_scene load_steps=4 format=3 uid="uid://c0sampleplayer1"]
+[gd_scene load_steps=8 format=3 uid="uid://c0sampleplayer1"]
 
 [ext_resource type="Script" path="res://src/player/Player.cs" id="1_player"]
-[ext_resource type="Texture2D" path="res://assets/sprites/placeholder_player.svg" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/clockwork_critter.svg" id="2_tex"]
+[ext_resource type="Shader" path="res://assets/shaders/hit_flash.gdshader" id="3_flash"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/jump.wav" id="4_jump"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/hurt.wav" id="5_hurt"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+shader = ExtResource("3_flash")
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
-size = Vector2(16, 32)
+size = Vector2(20, 22)
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_player")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_flash")
 texture = ExtResource("2_tex")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
@@ -17,3 +24,9 @@ shape = SubResource("RectangleShape2D_1")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position_smoothing_enabled = true
+
+[node name="JumpSfx" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4_jump")
+
+[node name="HurtSfx" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_hurt")

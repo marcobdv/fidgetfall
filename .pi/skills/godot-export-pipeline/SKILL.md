@@ -73,7 +73,7 @@ jobs:
       - run: |
           cd games/<slug>
           godot --headless --import --path .   # fresh checkout has no .godot/ cache
-      - run: dotnet test games/<slug>          # GdUnit4 headless
+      - run: dotnet test games/<slug>/test     # GdUnit4 headless (tests are their own project)
       - run: |
           cd games/<slug>
           godot --headless --export-release "Linux" build/linux/<Slug>.x86_64

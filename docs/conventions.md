@@ -50,8 +50,11 @@ games/<slug>/
   (for provenance). No NonCommercial/NoDerivatives assets in a shippable game.
 
 ## Testing
-- GdUnit4 under `test/`; `Method_State_Expectation` naming; deterministic; runs
-  headless in CI. Every fixed bug gets a regression test.
+- GdUnit4 under `test/` as its **own project** (`test/<Slug>.Tests.csproj` referencing
+  the game csproj) so the test framework never ships in exports; run with
+  `dotnet test test/`. Put a `.gdignore` in `test/` so the editor skips it.
+- `Method_State_Expectation` naming; deterministic; runs headless in CI. Every
+  fixed bug gets a regression test.
 
 ## Git
 - Conventional, small commits. Ignore: `.godot/`, `bin/`, `obj/`, `.mono/`,

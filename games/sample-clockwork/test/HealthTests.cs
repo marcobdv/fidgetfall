@@ -50,4 +50,28 @@ public class HealthTests
         AssertInt(hp.Current).IsEqual(0);
         AssertBool(hp.IsDead).IsTrue();
     }
+
+    // Regression: Died must fire exactly once — TakeDamage reports the alive→dead
+    // edge, not the dead level, so damaging a corpse returns false.
+    [TestCase]
+    public void TakeDamage_ReportsDeathEdge_ExactlyOnce()
+    {
+        var hp = new Health(max: 2);
+        AssertBool(hp.TakeDamage(1)).IsFalse();   // hurt, still alive
+        AssertBool(hp.TakeDamage(5)).IsTrue();    // the killing blow
+        AssertBool(hp.TakeDamage(5)).IsFalse();   // corpse — no second edge
+        AssertInt(hp.Current).IsEqual(0);
+    }
+
+    [TestCase]
+    public void SetCurrent_Clamps_AndCanRevive()
+    {
+        var hp = new Health(max: 3);
+        hp.TakeDamage(3);
+        hp.SetCurrent(99);                        // revive path (save/load, respawn)
+        AssertInt(hp.Current).IsEqual(3);
+        AssertBool(hp.IsDead).IsFalse();
+        hp.SetCurrent(-5);
+        AssertInt(hp.Current).IsEqual(0);
+    }
 }

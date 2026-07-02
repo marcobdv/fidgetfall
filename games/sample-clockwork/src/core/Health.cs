@@ -18,11 +18,16 @@ public sealed class Health
         Current = max;
     }
 
-    /// <summary>Apply damage; clamps at zero. Ignores non-positive amounts.</summary>
-    public void TakeDamage(int amount)
+    /// <summary>
+    /// Apply damage; clamps at zero. Ignores non-positive amounts. Returns true only
+    /// when this call caused the alive→dead transition, so callers can fire a death
+    /// event exactly once (damaging a corpse returns false).
+    /// </summary>
+    public bool TakeDamage(int amount)
     {
-        if (amount <= 0) return;
+        if (amount <= 0 || IsDead) return false;
         Current = System.Math.Max(0, Current - amount);
+        return IsDead;
     }
 
     /// <summary>Heal; clamps at Max. Ignores non-positive amounts and the dead.</summary>
@@ -32,7 +37,10 @@ public sealed class Health
         Current = System.Math.Min(Max, Current + amount);
     }
 
-    /// <summary>Directly set current health (clamped). Useful for save/load and tests.</summary>
+    /// <summary>
+    /// Directly set current health (clamped). Unlike <see cref="Heal"/> this has no
+    /// dead-guard by design — it's the revive path for save/load, respawn, and tests.
+    /// </summary>
     public void SetCurrent(int value) =>
         Current = System.Math.Clamp(value, 0, Max);
 }

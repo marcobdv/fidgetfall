@@ -15,7 +15,7 @@ native crash can't take down the suite, and treat headless scene tests as unstab
 The `godot-testing-gdunit4` skill carries this caution.
 
 ## Consequences
-- Test suites are fast, deterministic, and reliable headless (sample: 10/10;
+- Test suites are fast, deterministic, and reliable headless (sample: 20/20;
   clockwork-menagerie: 41/41).
 - A real coverage gap remains: the Node-layer integration (input→core→SFX→payoff) is
   not unit-tested. Mitigation: build + headless run (smoke), and a proposed

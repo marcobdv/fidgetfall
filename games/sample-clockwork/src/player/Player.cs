@@ -4,9 +4,10 @@ using SampleClockwork.Core;
 namespace SampleClockwork.Player;
 
 /// <summary>
-/// Minimal 2D character controller demonstrating the studio's gameplay patterns:
-/// exported tunables, coyote time + jump buffering, and thin-node-over-pure-logic
-/// (delegates health to <see cref="Core.Health"/>). See the godot-2d-platformer-kit skill.
+/// Thin node over pure logic (ADR-0004): movement lives in <see cref="PlayerMotor"/>,
+/// health in <see cref="Core.Health"/> — both unit-tested without the scene tree.
+/// This node only reads input, applies the motor's velocity, and plays feedback
+/// (SFX, hit flash). See the godot-2d-platformer-kit skill.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
@@ -22,11 +23,22 @@ public partial class Player : CharacterBody2D
 
     [Signal] public delegate void DiedEventHandler();
 
+    private readonly PlayerMotor _motor = new();
     private Health? _health;
-    private float _coyote;
-    private float _buffer;
+    private Vector2 _spawn;
+    private AudioStreamPlayer? _jumpSfx;
+    private AudioStreamPlayer? _hurtSfx;
+    private ShaderMaterial? _flash;
+    private Tween? _flashTween;
 
-    public override void _Ready() => EnsureHealth();
+    public override void _Ready()
+    {
+        EnsureHealth();
+        _spawn = GlobalPosition;
+        _jumpSfx = GetNodeOrNull<AudioStreamPlayer>("JumpSfx");
+        _hurtSfx = GetNodeOrNull<AudioStreamPlayer>("HurtSfx");
+        _flash = GetNodeOrNull<Sprite2D>("Sprite2D")?.Material as ShaderMaterial;
+    }
 
     /// <summary>
     /// Lazily create the health model, clamping the designer-set <see cref="MaxHealth"/> to a
@@ -51,37 +63,61 @@ public partial class Player : CharacterBody2D
 
     public override void _PhysicsProcess(double delta)
     {
-        float dt = (float)delta;
-        Vector2 v = Velocity;
-
-        float input = Input.GetAxis("move_left", "move_right");
-        v.X = input != 0
-            ? Mathf.MoveToward(v.X, input * Speed, Acceleration * dt)
-            : Mathf.MoveToward(v.X, 0f, Friction * dt);
-
-        bool onFloor = IsOnFloor();
-        if (!onFloor) v.Y += Gravity * dt;
-
-        _coyote = onFloor ? CoyoteTime : Mathf.Max(0f, _coyote - dt);
-        _buffer = Input.IsActionJustPressed("jump") ? JumpBuffer : Mathf.Max(0f, _buffer - dt);
-
-        if (_buffer > 0f && _coyote > 0f)
-        {
-            v.Y = JumpVelocity;
-            _buffer = 0f;
-            _coyote = 0f;
-        }
-        if (Input.IsActionJustReleased("jump") && v.Y < 0f) v.Y *= JumpCutMultiplier;
-
-        Velocity = v;
+        SyncMotorTunables();
+        (float x, float y) = _motor.Tick(
+            (float)delta, Velocity.X, Velocity.Y,
+            Input.GetAxis("move_left", "move_right"),
+            Input.IsActionJustPressed("jump"),
+            Input.IsActionJustReleased("jump"),
+            IsOnFloor());
+        Velocity = new Vector2(x, y);
+        if (_motor.JumpedThisTick) _jumpSfx?.Play();
         MoveAndSlide();
     }
 
-    /// <summary>Damage the player; emits <see cref="Died"/> when health reaches zero.</summary>
+    // [Export] fields stay the inspector-facing source of truth; push them into the
+    // pure motor each tick so live tuning works.
+    private void SyncMotorTunables()
+    {
+        _motor.Speed = Speed;
+        _motor.Acceleration = Acceleration;
+        _motor.Friction = Friction;
+        _motor.JumpVelocity = JumpVelocity;
+        _motor.Gravity = Gravity;
+        _motor.CoyoteTime = CoyoteTime;
+        _motor.JumpBuffer = JumpBuffer;
+        _motor.JumpCutMultiplier = JumpCutMultiplier;
+    }
+
+    /// <summary>Damage the player; emits <see cref="Died"/> exactly once, on the
+    /// alive→dead transition (the edge lives in <see cref="Health.TakeDamage"/>).</summary>
     public void TakeDamage(int amount)
     {
         var health = EnsureHealth();
-        health.TakeDamage(amount);
-        if (health.IsDead) EmitSignal(SignalName.Died);
+        int before = health.Current;
+        bool died = health.TakeDamage(amount);
+        if (health.Current < before)
+        {
+            _hurtSfx?.Play();
+            Flash();
+        }
+        if (died) EmitSignal(SignalName.Died);
+    }
+
+    /// <summary>Back to the spawn point with full health. Main wires this to <see cref="Died"/>.</summary>
+    public void Respawn()
+    {
+        EnsureHealth().SetCurrent(MaxHealth);
+        GlobalPosition = _spawn;
+        Velocity = Vector2.Zero;
+    }
+
+    private void Flash()
+    {
+        if (_flash is null) return;
+        _flashTween?.Kill();
+        _flash.SetShaderParameter("flash_amount", 1f);
+        _flashTween = CreateTween();
+        _flashTween.TweenProperty(_flash, "shader_parameter/flash_amount", 0f, 0.25f);
     }
 }

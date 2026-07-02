@@ -54,13 +54,14 @@ dotnet build                                   # compiles C# (Godot.NET.Sdk 4.7)
 godot --headless --import --path .             # imports assets + generates C# glue
 godot --headless --path . --quit-after 90      # runs Main.tscn for 90 frames, then quits
 
-# Run the test suite (pure-logic tests — no Godot binary needed):
-dotnet test                                    # expect: Passed! 10 (5 test methods, 10 cases)
+# Run the test suite (pure-logic tests — no Godot binary needed; tests are
+# their own project under test/, so point dotnet test at it):
+dotnet test test/                              # expect: Passed! 20
 cd ../..
 ```
 
 This exact sequence has been verified on Godot 4.7 + .NET 9: the sample builds
-(0 warnings/errors), imports, runs headless, and all 10 GdUnit4 test cases pass.
+(0 warnings/errors), imports, runs headless, and all 20 GdUnit4 test cases pass.
 If it works for you too, the studio toolchain is good to go.
 
 ## 5. Launch the studio
