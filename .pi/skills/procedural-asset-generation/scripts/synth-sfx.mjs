@@ -6,6 +6,7 @@
 //   node synth-sfx.mjs <out.wav> [--type jump|hit|pickup|blip|explosion]
 //                                [--wave square|sine|saw|noise]
 //                                [--f0 300] [--f1 900] [--dur 0.18] [--vol 0.5]
+//                                [--decay 1.6]   (envelope exponent; higher = snappier)
 //
 // Examples:
 //   node synth-sfx.mjs jump.wav   --type jump
@@ -38,7 +39,9 @@ const PRESETS = {
   hit:       { wave: 'noise',  f0: 400,  f1: 120,  dur: 0.16, vol: 0.55, decay: 2.2 },
   explosion: { wave: 'noise',  f0: 200,  f1: 40,   dur: 0.45, vol: 0.6, decay: 1.1 },
 };
-const base = PRESETS[opt('type', 'jump')] ?? PRESETS.jump;
+const type = opt('type', 'jump');
+const base = PRESETS[type];
+if (!base) { console.error(`error: unknown --type "${type}" (expected ${Object.keys(PRESETS).join('|')})`); process.exit(1); }
 const cfg = {
   wave:  opt('wave', base.wave),
   f0:    num('f0', base.f0),

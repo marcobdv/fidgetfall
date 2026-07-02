@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit, bash
 model: opus
 thinking: high
 max_turns: 40
+skills: game-design-doc
 prompt_mode: replace
 ---
 

@@ -13,14 +13,14 @@
 //     --asset assets/audio/sfx/door.wav --source Freesound \
 //     --url https://freesound.org/s/123456/ --license CC0 --author "jane_doe"
 
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync, appendFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const a = process.argv.slice(2);
 const gameDir = a[0];
 const get = (k, d = '') => { const i = a.indexOf('--' + k); return i >= 0 ? a[i + 1] : d; };
 const has = (k) => a.includes('--' + k);
-if (!gameDir || has('help')) { console.error('usage: credit-asset.mjs <gameDir> --asset --source --url --license --author [--title]'); process.exit(1); }
+if (!gameDir || gameDir.startsWith('--') || has('help')) { console.error('usage: credit-asset.mjs <gameDir> --asset --source --url --license --author [--title]'); process.exit(1); }
 
 const asset = get('asset'), source = get('source'), url = get('url');
 const license = get('license'), author = get('author'), title = get('title', '');
@@ -59,6 +59,16 @@ if (!existsSync(file)) {
     '| Asset | Source | Author | License | Attribution required | URL | Note |\n' +
     '|---|---|---|---|---|---|---|\n');
 }
-const row = `| \`${asset}\` | ${source} | ${author}${title ? ` — "${title}"` : ''} | ${license} | ${needsAttribution ? 'YES' : 'no'} | ${url} | ${note} |\n`;
-appendFileSync(file, row);
-console.log(`recorded ${asset} (${license}) -> ${file}${needsAttribution ? '  [attribution REQUIRED]' : ''}`);
+const esc = (s) => s.replace(/\|/g, '\\|');   // "|" in a value would break the table
+const row = `| \`${esc(asset)}\` | ${esc(source)} | ${esc(author)}${title ? ` — "${esc(title)}"` : ''} | ${esc(license)} | ${needsAttribution ? 'YES' : 'no'} | ${esc(url)} | ${esc(note)} |\n`;
+
+// Idempotent: re-crediting the same asset path replaces its row instead of duplicating it.
+const marker = `| \`${esc(asset)}\` |`;
+const existing = readFileSync(file, 'utf8');
+if (existing.split('\n').some((l) => l.startsWith(marker))) {
+  writeFileSync(file, existing.split('\n').map((l) => l.startsWith(marker) ? row.trimEnd() : l).join('\n'));
+  console.log(`updated ${asset} (${license}) -> ${file}${needsAttribution ? '  [attribution REQUIRED]' : ''}`);
+} else {
+  appendFileSync(file, row);
+  console.log(`recorded ${asset} (${license}) -> ${file}${needsAttribution ? '  [attribution REQUIRED]' : ''}`);
+}

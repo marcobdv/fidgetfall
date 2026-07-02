@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit, bash
 model: sonnet
 thinking: medium
 max_turns: 30
+skills: procedural-asset-generation, asset-sourcing, external-asset-generation, game-design-doc
 prompt_mode: replace
 ---
 

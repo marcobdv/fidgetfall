@@ -43,7 +43,8 @@ decay envelope) with game-ready presets:
 ```bash
 node .pi/skills/procedural-asset-generation/scripts/synth-sfx.mjs \
      games/<slug>/assets/audio/sfx/jump.wav --type jump
-# presets: jump | pickup | blip | hit | explosion ; override --wave/--f0/--f1/--dur/--vol
+# presets: jump | pickup | blip | hit | explosion
+# override --wave/--f0/--f1/--dur/--vol/--decay (decay = envelope exponent; higher = snappier)
 ```
 
 ### Music — algorithmic / chiptune

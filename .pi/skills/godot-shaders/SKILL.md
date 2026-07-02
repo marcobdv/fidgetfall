@@ -54,7 +54,7 @@ shader_parameter/flash_amount = 0.0
 
 ## Common effects to reach for
 - **Hit flash / tint** (above), **dissolve** (noise threshold on `discard`/alpha),
-  **outline** (sample neighbors in `SCREEN_UV`), **scroll/wave** (offset `UV` by
+  **outline** (sample `TEXTURE` at `UV ± TEXTURE_PIXEL_SIZE` neighbors), **scroll/wave** (offset `UV` by
   `TIME`), **palette swap** (index into a gradient).
 
 ## Conventions

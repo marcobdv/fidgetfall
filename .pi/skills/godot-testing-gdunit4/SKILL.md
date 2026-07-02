@@ -13,7 +13,8 @@ extracted from nodes; use scene tests only when you need the tree.
    ```bash
    cd games/<slug>
    dotnet add package gdUnit4.api
-   dotnet add package gdUnit4.test.adapter   # enables `dotnet test`
+   dotnet add package gdUnit4.test.adapter     # VSTest adapter
+   dotnet add package Microsoft.NET.Test.Sdk   # required or `dotnet test` discovers 0 tests
    ```
 2. Tests live under `games/<slug>/test/`.
 
@@ -44,7 +45,7 @@ public class HealthTests
     [TestCase(5, 10, 10)]    // overheal clamps to max
     public void Heal_ClampsToMax(int start, int heal, int expected)
     {
-        var hp = new Health(max: 10) ;
+        var hp = new Health(max: 10);
         hp.SetCurrent(start);
         hp.Heal(heal);
         AssertInt(hp.Current).IsEqual(expected);
@@ -59,6 +60,7 @@ public class HealthTests
 
 ```csharp
 [TestSuite]
+[RequireGodotRuntime]   // gdUnit4 v5: without this the test runs on plain .NET and ISceneRunner fails
 public class PlayerSceneTest
 {
     [TestCase]
@@ -81,14 +83,19 @@ public class PlayerSceneTest
 
 ## Run
 
-GdUnit4 launches the Godot engine to host tests, so **`GODOT_BIN` must point at
-your Godot mono executable** or `dotnet test` will find no tests:
+In gdUnit4 v5, **pure-logic tests run as plain .NET tests** — no Godot binary
+needed. Only suites/tests marked `[RequireGodotRuntime]` launch the engine, and
+for those **`GODOT_BIN` must point at your Godot mono executable** or they fail
+to host:
 
 ```bash
 cd games/<slug>
-export GODOT_BIN="C:/Godot_v4.7-stable_mono_win64/Godot_v4.7-stable_mono_win64/Godot_v4.7-stable_mono_win64.exe"
-# PowerShell: $env:GODOT_BIN = "C:\...\Godot_v4.7-stable_mono_win64.exe"
-dotnet test                      # via the test adapter; works headless in CI
+dotnet test                      # pure-logic tests: just works, headless in CI
+
+# only needed when [RequireGodotRuntime] tests exist:
+export GODOT_BIN="/path/to/Godot_v4.7-stable_mono.exe"
+# PowerShell: $env:GODOT_BIN = "C:\path\to\Godot_v4.7-stable_mono.exe"
+dotnet test
 ```
 
 ## Conventions

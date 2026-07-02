@@ -12,17 +12,16 @@ This wires up the toolchain the agents need. Estimated time: ~15 minutes.
 | git | any | `git --version` | <https://git-scm.com> |
 
 > ⚠️ You must use the **.NET (Mono) build of Godot**, not the standard build, or
-> C# scripting will not work. On Windows, add the Godot executable to your `PATH`
-> (or set `GODOT4` to its full path) so agents can run it headless.
->
-> On this machine Godot 4.7 mono is installed at:
-> `C:\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe`
-> Set `GODOT_BIN` to that path — **GdUnit4's `dotnet test` requires it** to launch
-> the engine:
+> C# scripting will not work. Add the Godot executable to your `PATH` so agents
+> can run it headless, and set `GODOT_BIN` to its full path — GdUnit4 needs it
+> to host any test marked `[RequireGodotRuntime]` (pure-logic tests run without
+> it):
 > ```bash
-> export GODOT_BIN="C:/Godot_v4.7-stable_mono_win64/Godot_v4.7-stable_mono_win64/Godot_v4.7-stable_mono_win64.exe"
-> # PowerShell: $env:GODOT_BIN = "C:\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe"
+> export GODOT_BIN="/path/to/Godot_v4.7-stable_mono.exe"
+> # PowerShell: $env:GODOT_BIN = "C:\path\to\Godot_v4.7-stable_mono_win64.exe"
 > ```
+> Record your machine's actual path in an untracked `LOCAL.md` at the repo root
+> (gitignored) so agents can find it without hardcoding it into shared docs.
 
 ## 2. Install Pi
 
@@ -55,14 +54,14 @@ dotnet build                                   # compiles C# (Godot.NET.Sdk 4.7)
 godot --headless --import --path .             # imports assets + generates C# glue
 godot --headless --path . --quit-after 90      # runs Main.tscn for 90 frames, then quits
 
-# Run the test suite (GdUnit4 launches Godot — GODOT_BIN must be set, see §1):
-dotnet test                                    # expect: Passed! 5/5
+# Run the test suite (pure-logic tests — no Godot binary needed):
+dotnet test                                    # expect: Passed! 10 (5 test methods, 10 cases)
 cd ../..
 ```
 
 This exact sequence has been verified on Godot 4.7 + .NET 9: the sample builds
-(0 warnings/errors), imports, runs headless, and all 5 GdUnit4 tests pass. If it
-works for you too, the studio toolchain is good to go.
+(0 warnings/errors), imports, runs headless, and all 10 GdUnit4 test cases pass.
+If it works for you too, the studio toolchain is good to go.
 
 ## 5. Launch the studio
 
@@ -76,7 +75,7 @@ Then talk to it — see the README for example prompts. The Orchestrator reads
 ## Troubleshooting
 
 - **`godot` not found** — ensure you installed the Mono/.NET build and it's on
-  `PATH`. Agents fall back to `$GODOT4` if set.
+  `PATH`. Agents fall back to `$GODOT_BIN` if set.
 - **C# scripts not recognized** — open the project once in the Godot editor to
   generate the `.godot/mono` glue, or run `godot --headless --build-solutions`.
 - **Subagents don't appear** — confirm `pi install` completed and re-launch `pi`

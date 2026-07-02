@@ -5,23 +5,8 @@
   "followUpMode": "one-at-a-time",
   "defaultProjectTrust": true,
   "enableInstallTelemetry": false,
+  "$comment_permissions": "Pi has no permission allow/ask gating (that schema is Claude Code's) — do not add a 'permissions' block here expecting guardrails; it is silently ignored.",
   "packages": [
     "npm:@tintinweb/pi-subagents"
-  ],
-  "permissions": {
-    "allow": [
-      "bash(dotnet build*)",
-      "bash(dotnet test*)",
-      "bash(dotnet run*)",
-      "bash(godot*)",
-      "bash(git status*)",
-      "bash(git diff*)",
-      "bash(git add*)",
-      "bash(git log*)"
-    ],
-    "ask": [
-      "bash(git push*)",
-      "bash(rm *)"
-    ]
-  }
+  ]
 }

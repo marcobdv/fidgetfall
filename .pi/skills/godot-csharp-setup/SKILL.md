@@ -14,13 +14,20 @@ Use this to stand up a buildable Godot 4 (.NET edition) project. Requires the
 games/<slug>/
 ├── project.godot            # engine config
 ├── <Slug>.csproj            # C# project (Godot.NET.Sdk)
-├── <Slug>.sln               # solution (optional but nice for IDEs)
+├── <Slug>.sln               # solution (optional; Godot regenerates it)
 ├── src/                     # C# scripts (mirrors scene structure)
 ├── scenes/                  # .tscn scenes
 ├── assets/                  # sprites, audio, shaders, fonts, models
+├── data/                    # .tres resources by category (see docs/conventions.md)
+├── addons/                  # editor plugins (only when used)
+├── tools/                   # pipeline/editor tooling (only when used)
 ├── test/                    # GdUnit4 tests
-└── docs/                    # GDD, design, art/audio direction, qa, ops
+├── docs/                    # GDD, design, art/audio direction, qa, ops
+└── CREDITS.md               # asset provenance log (created by credit-asset.mjs)
 ```
+
+`data/`, `addons/`, and `tools/` can start empty or be added when first needed,
+but resources/plugins/tooling go there — not scattered — per `docs/conventions.md`.
 
 ## 1. `project.godot`
 

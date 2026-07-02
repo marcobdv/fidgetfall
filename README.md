@@ -31,7 +31,7 @@ flowchart TB
         ArtAudio["Art &amp; Audio<br/>concept · artist · animator · sound · composer"]
         QO["Quality &amp; Ops<br/>QA · build"]
     end
-    Roles -->|read| Skills["🧩 13 skills · .pi/skills<br/>Godot/C# + 3 asset tiers"]
+    Roles -->|read| Skills["🧩 14 skills · .pi/skills<br/>Godot/C# + 3 asset tiers"]
     Roles -->|write artifacts| Repo["📦 Repo<br/>code · scenes · assets · docs · tests"]
     Repo --> Game["🎮 Godot 4.7 / C# game"]
     Orch -.->|verify build · test · run| Game
@@ -99,7 +99,7 @@ AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
 
 The studio is operational and has shipped its first game:
 
-- **17 roles · 13 skills**, all wired and host-portable (verified running under Pi *and*
+- **17 roles · 14 skills**, all wired and host-portable (verified running under Pi *and*
   under another agent host).
 - **[`sample-clockwork`](games/sample-clockwork)** — the verified Godot 4.7 / C# template
   (builds, imports, runs headless, tests pass).

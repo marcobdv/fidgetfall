@@ -62,9 +62,18 @@ jobs:
         with: { dotnet-version: '9.0.x' }
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
-        with: { version: 4.7.0, use-dotnet: true }
+        with:
+          version: 4.7.0
+          use-dotnet: true
+          include-templates: true    # required for --export-*
+      # GODOT_BIN is only needed by [RequireGodotRuntime] tests, but setting it
+      # is cheap and makes the job work either way:
+      - run: echo "GODOT_BIN=$(which godot)" >> "$GITHUB_ENV"
       - run: dotnet build games/<slug>
-      - run: dotnet test  games/<slug>           # GdUnit4 headless
+      - run: |
+          cd games/<slug>
+          godot --headless --import --path .   # fresh checkout has no .godot/ cache
+      - run: dotnet test games/<slug>          # GdUnit4 headless
       - run: |
           cd games/<slug>
           godot --headless --export-release "Linux" build/linux/<Slug>.x86_64

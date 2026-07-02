@@ -65,6 +65,12 @@ don't sell the font itself.
    for cohesion + zero obligation.
 2. **Verify license** on the asset page. Reject NC/ND for a commercial game.
 3. **Download** to the right folder: `curl -L -o games/<slug>/assets/<kind>/<file> <url>`.
+   Most packs (Kenney, OpenGameArt, Sonniss) ship as **zip archives** — download to a
+   temp dir, extract (`unzip`/`tar -xf`/PowerShell `Expand-Archive`), copy only the
+   files you need into `assets/`, and delete the rest (don't commit whole packs).
+   Direct-file URLs work for Freesound/Poly Haven; **itch.io** downloads usually sit
+   behind a JS purchase flow `curl` can't drive — pick a source with direct links
+   instead, or ask the human to download.
 4. **Record provenance — mandatory** (the tool refuses NC/ND and builds `CREDITS.md`):
    ```bash
    node .pi/skills/asset-sourcing/scripts/credit-asset.mjs games/<slug> \

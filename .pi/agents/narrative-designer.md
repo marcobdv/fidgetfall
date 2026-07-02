@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit
 model: sonnet
 thinking: medium
 max_turns: 30
+skills: game-design-doc
 prompt_mode: replace
 ---
 

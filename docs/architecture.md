@@ -14,7 +14,7 @@ flowchart TB
     subgraph STUDIO["STUDIO — host-portable markdown + conventions"]
         S1["AGENTS.md<br/>handbook"]
         S2[".pi/agents<br/>17 roles"]
-        S3[".pi/skills<br/>13 skills"]
+        S3[".pi/skills<br/>14 skills"]
         S4["docs/<br/>pipeline · conventions · ADRs"]
     end
     subgraph PRODUCTS["PRODUCTS — Godot 4.7 / C# games"]
@@ -61,10 +61,12 @@ sequenceDiagram
 
 - **17 roles** across Production, Design, Engineering, Art, Audio, Quality, Ops —
   defined in `.pi/agents/`, indexed with a routing table in [roles.md](roles.md).
-- **13 skills** in `.pi/skills/` — Godot/C# capabilities (setup, scripting, scenes,
-  input, resources, shaders, testing, export) plus design (`game-design-doc`) and the
-  three asset tiers (ADR-0005). Some skills ship **committed generator tools**
-  (`synth-sfx.mjs`, `credit-asset.mjs`).
+- **14 skills** in `.pi/skills/` — Godot/C# capabilities (setup, scripting, scenes,
+  input, resources, shaders, audio, testing, export, the 2D platformer kit) plus
+  design (`game-design-doc`) and the three asset tiers (ADR-0005). Some skills ship
+  **committed generator tools** (`synth-sfx.mjs`, `credit-asset.mjs`). Each role
+  brief preloads its skills via `skills:` frontmatter (pi-subagents injects the
+  SKILL.md content into the role's prompt).
 
 ## Engineering spine (per game)
 

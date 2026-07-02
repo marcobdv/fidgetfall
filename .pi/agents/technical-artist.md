@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit, bash
 model: opus
 thinking: high
 max_turns: 35
+skills: godot-shaders, godot-scene-authoring, godot-resource-authoring, godot-csharp-node-scripting
 prompt_mode: replace
 ---
 

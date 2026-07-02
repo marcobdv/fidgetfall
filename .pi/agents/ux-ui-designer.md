@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit, bash
 model: sonnet
 thinking: medium
 max_turns: 35
+skills: godot-scene-authoring, godot-csharp-node-scripting, godot-input-map, godot-resource-authoring, asset-sourcing
 prompt_mode: replace
 ---
 

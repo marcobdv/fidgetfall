@@ -15,6 +15,9 @@
 # Node (Pi tooling)
 node_modules/
 
+# Machine-specific notes (local toolchain paths etc.)
+LOCAL.md
+
 # OS / IDE
 .DS_Store
 .vs/

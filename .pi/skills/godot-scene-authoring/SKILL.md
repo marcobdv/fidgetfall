@@ -11,7 +11,7 @@ re-imports on open, so hand-authoring is safe for scaffolding.
 ## File structure
 
 ```ini
-[gd_scene load_steps=3 format=3 uid="uid://bxyz123"]
+[gd_scene load_steps=4 format=3 uid="uid://bxyz123"]
 
 [ext_resource type="Script" path="res://src/player/Player.cs" id="1_player"]
 [ext_resource type="Texture2D" path="res://assets/sprites/player.png" id="2_tex"]
@@ -21,7 +21,7 @@ size = Vector2(16, 32)
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_player")
-Speed = 220.0                       # sets the [Export] property
+Speed = 220.0
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_tex")
@@ -29,6 +29,9 @@ texture = ExtResource("2_tex")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_1")
 ```
+
+`Speed = 220.0` sets the `[Export]` property on the attached script. Note that
+`.tscn` has **no comment syntax** — never write `#` or `;` comments inside one.
 
 ## Rules
 - **Header:** `load_steps` = count of ext+sub resources + 1; `format=3` for Godot 4.
@@ -56,5 +59,9 @@ position = Vector2(400, 100)
 - Don't invent `uid://` values for ext_resources you don't control — use the real
   path; Godot resolves/repairs UIDs on import. For the scene's own header `uid`,
   any unique `uid://...` is fine (Godot may rewrite it).
+- Godot 4.4+ logs a warning for `ext_resource` entries without `uid=` and adds
+  them on the next editor save. That warning is expected for hand-authored
+  scenes — don't chase it as an error; the resulting diff noise on first editor
+  open is normal.
 - After authoring, run `godot --headless --path . --quit` to import and catch errors.
 - For complex visual work, scaffold the tree by hand, then let a human/editor refine.

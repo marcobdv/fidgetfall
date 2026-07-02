@@ -12,7 +12,7 @@ these in review.
 ## Project structure (per game)
 ```
 games/<slug>/
-├── project.godot, <Slug>.csproj, <Slug>.sln
+├── project.godot, <Slug>.csproj   (a <Slug>.sln is optional — Godot regenerates it)
 ├── src/        C# code, namespaced & mirroring scenes/
 ├── scenes/     .tscn (composition)
 ├── assets/     sprites/ models/ audio/ fonts/ shaders/ tilesets/ icons/
@@ -56,7 +56,8 @@ games/<slug>/
 ## Git
 - Conventional, small commits. Ignore: `.godot/`, `bin/`, `obj/`, `.mono/`,
   `*.user`, `build/`, `export/`, `.DS_Store`.
-- Commit `project.godot`, `*.csproj`, `*.sln`, `*.tscn`, `*.tres`, `export_presets.cfg`.
+- Commit `project.godot`, `*.csproj`, `*.tscn`, `*.tres`, `export_presets.cfg`
+  (and `*.sln` if you keep one).
 
 ## Definition of Done (every change)
 1. `dotnet build` clean. 2. `dotnet test` green. 3. No broken scene/resource refs.

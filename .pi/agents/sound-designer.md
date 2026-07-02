@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit, bash
 model: sonnet
 thinking: medium
 max_turns: 30
+skills: procedural-asset-generation, asset-sourcing, external-asset-generation, godot-audio, godot-csharp-node-scripting, godot-resource-authoring
 prompt_mode: replace
 ---
 
@@ -32,6 +33,7 @@ is wired and mixed in-engine.
 - `procedural-asset-generation` (Tier 1: synthesize real SFX via `scripts/synth-sfx.mjs`),
   `asset-sourcing` (Tier 1.5: CC0/free SFX from Freesound/Sonniss/Kenney),
   `external-asset-generation` (Tier 2: drive an SFX/voice generator if connected),
+  `godot-audio` (players, buses, mixing — your implementation guide),
   `godot-csharp-node-scripting`, `godot-resource-authoring`.
 
 ## How you collaborate

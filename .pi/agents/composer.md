@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit, bash
 model: sonnet
 thinking: medium
 max_turns: 30
+skills: procedural-asset-generation, asset-sourcing, external-asset-generation, godot-audio, godot-csharp-node-scripting, godot-resource-authoring
 prompt_mode: replace
 ---
 
@@ -34,6 +35,7 @@ Score the game's emotional arc and design how music responds to play.
 - `procedural-asset-generation` (Tier 1: algorithmic/chiptune loops & adaptive stems),
   `asset-sourcing` (Tier 1.5: CC-BY/CC0 tracks — Incompetech, Pixabay Music, OpenGameArt),
   `external-asset-generation` (Tier 2: drive a music generator like Suno/Udio if connected),
+  `godot-audio` (autoload + crossfade/stem patterns — your implementation guide),
   `godot-csharp-node-scripting`, `godot-resource-authoring`.
 
 ## How you collaborate

@@ -18,8 +18,9 @@ namespace Slug.Player;            // mirror folder path
 public partial class Player : CharacterBody2D   // MUST be `partial`
 {
     // Exported, designer-tunable fields show in the Inspector.
-    [Export] public float Speed { get; set; } = 200f;
-    [Export] public PackedScene? BulletScene { get; set; }
+    // Studio convention (docs/conventions.md): prefer [Export] fields.
+    [Export] public float Speed = 200f;
+    [Export] public PackedScene? BulletScene;
 
     // Cache node references in _Ready, not every frame.
     private AnimatedSprite2D _sprite = null!;
@@ -66,8 +67,11 @@ Register a scene/script as an autoload in `project.godot`:
 
 ```ini
 [autoload]
-GameState="*res://src/core/GameState.cs"   # leading * = enabled
+GameState="*res://src/core/GameState.cs"  ; leading * = enabled
 ```
+
+(Comments in `project.godot` use `;` — `#` is not a comment token and breaks the
+parser.)
 
 Access from anywhere: `GetNode<GameState>("/root/GameState")`, or expose a static
 `Instance` set in `_Ready`.

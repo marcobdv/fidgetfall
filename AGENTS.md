@@ -19,10 +19,12 @@ approves milestones; the agents do the work.
 - **Source control:** git
 - **Target platforms:** Windows + Linux desktop first; web (HTML5) and mobile as stretch goals
 
-**Local toolchain (this machine):** Godot 4.7 mono lives at
-`C:\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe`.
-For `dotnet test` (GdUnit4), export `GODOT_BIN` to that path. The bundled
-`games/sample-clockwork` is verified: builds, imports, runs headless, 5/5 tests pass.
+**Local toolchain:** the Godot 4.7 mono executable should be on `PATH`, with
+`GODOT_BIN` set to its full path (needed by GdUnit4 for `[RequireGodotRuntime]`
+tests; pure-logic tests run without it). Machine-specific paths live in the
+untracked `LOCAL.md` at the repo root — check there first. The bundled
+`games/sample-clockwork` is verified: builds, imports, runs headless, 10/10 test
+cases pass.
 
 ## 2. Mental model: the studio is the orchestrator
 
@@ -142,9 +144,9 @@ product. The Producer decides graduation at the greenlight gate.
 
 ## 6. Engineering conventions (summary — full text in `docs/conventions.md`)
 
-- **Godot project per game** under `games/<slug>/`, with `project.godot`, a
-  `*.csproj` targeting `net8.0` (Godot's tested baseline; see `docs/conventions.md`),
-  and a `*.sln`.
+- **Godot project per game** under `games/<slug>/`, with `project.godot` and a
+  `*.csproj` targeting `net8.0` (Godot's tested baseline; see `docs/conventions.md`).
+  A `*.sln` is optional — Godot regenerates it.
 - **C# style:** PascalCase types/methods/properties, `_camelCase` private fields,
   nullable reference types **on**, one top-level type per file.
 - **Scenes (`.tscn`)** are composition; **C# scripts** are behavior. Prefer

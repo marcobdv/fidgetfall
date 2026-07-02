@@ -4,6 +4,7 @@ tools: read, grep, find, write, edit
 model: opus
 thinking: high
 max_turns: 35
+skills: game-design-doc, godot-resource-authoring
 prompt_mode: replace
 ---
 
