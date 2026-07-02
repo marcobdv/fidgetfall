@@ -72,7 +72,7 @@ See `.pi/agents/` for the full definition of each role. Delegate by intent:
 ### Asset generation — how art & audio actually get made
 
 Agents can't paint or record by hand, but the studio produces real assets via a
-**two-tier model** (both first-class skills in `.pi/skills/`):
+**three-tier model** (all three first-class skills in `.pi/skills/`):
 
 - **Tier 1 — `procedural-asset-generation` (in-harness, free, always available):**
   real art & audio from code/text alone — **SVG vector art, code-rendered raster/
@@ -93,20 +93,20 @@ Agents can't paint or record by hand, but the studio produces real assets via a
 that decides whether the studio is self-sufficient (Tier 1), better served by a
 cohesive CC0 asset set (Tier 1.5), or needs Tier 2 / a human. **Decision order:**
 Tier 1 for cohesion → Tier 1.5 when a ready-made asset beats generating it → Tier 2
-if connected → human. Always vet licenses, record provenance in `CREDITS.md`, and
-keep a shopping list in `docs/art/asset-status.md` / `docs/audio/*`. Placeholder-first
-still holds — never block gameplay on final assets.
+if connected → human. Always vet licenses, record provenance in `games/<slug>/CREDITS.md`, and keep a
+shopping list in `games/<slug>/docs/art/asset-status.md` / `games/<slug>/docs/audio/*`.
+Placeholder-first still holds — never block gameplay on final assets.
 
 ## 4. The production pipeline
 
 Every game moves through these phases (see `docs/pipeline.md` for detail):
 
-1. **Concept** — Creative Director + Game Designer produce a one-page pitch and pillars.
-2. **Pre-production** — Game Designer writes the GDD; Producer breaks it into a backlog; Lead Programmer drafts architecture.
-3. **Prototype** — Gameplay Programmer builds a playable core-loop vertical slice with placeholder art. Greenlight gate.
-4. **Production** — All disciplines build out content against the backlog in milestones.
-5. **Polish & QA** — QA hardens, designers tune game feel, tech artist/audio elevate.
-6. **Release** — Build Engineer produces signed exports; Producer ships the milestone.
+0. **Concept** — Creative Director + Game Designer produce a one-page pitch and pillars.
+1. **Pre-production** — Game Designer writes the GDD; Producer breaks it into a backlog; Lead Programmer drafts architecture.
+2. **Prototype** — Gameplay Programmer builds a playable core-loop vertical slice with placeholder art. Greenlight gate (graduation point, ADR-0008).
+3. **Production** — All disciplines build out content against the backlog in milestones.
+4. **Polish & QA** — QA hardens, designers tune game feel, tech artist/audio elevate.
+5. **Release** — Build Engineer produces signed exports; Producer ships the milestone.
 
 Each phase ends with a **quality gate** the Producer must clear with the human.
 

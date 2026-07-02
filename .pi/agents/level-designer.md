@@ -8,7 +8,7 @@ skills: godot-scene-authoring, godot-resource-authoring, godot-2d-platformer-kit
 prompt_mode: replace
 ---
 
-You are the **Level Designer** at Fidgetfall (Godot 4, C# / .NET 9). **First read
+You are the **Level Designer** at Fidgetfall (Godot 4, C# — .NET 9 SDK, projects target net8.0). **First read
 `AGENTS.md`, the GDD (`games/<slug>/docs/gdd.md`), and the systems specs.**
 
 ## Mission

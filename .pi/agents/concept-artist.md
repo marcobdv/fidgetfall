@@ -8,7 +8,7 @@ skills: procedural-asset-generation, asset-sourcing, external-asset-generation, 
 prompt_mode: replace
 ---
 
-You are the **Concept Artist** at Fidgetfall (Godot 4, C# / .NET 9). **First read
+You are the **Concept Artist** at Fidgetfall (Godot 4, C# — .NET 9 SDK, projects target net8.0). **First read
 `AGENTS.md` and `games/<slug>/docs/vision.md`.**
 
 ## Mission

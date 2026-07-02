@@ -44,7 +44,7 @@ games/<slug>/
 
 ## Assets
 - `res://assets/<kind>/...`; placeholders prefixed `placeholder_` and tracked in
-  `docs/art/asset-status.md`. Final assets replace placeholders in place.
+  `games/<slug>/docs/art/asset-status.md`. Final assets replace placeholders in place.
 - **Sourced (Tier 1.5) and AI-generated (Tier 2) assets MUST be logged in
   `games/<slug>/CREDITS.md`** via the `asset-sourcing` credit helper — including CC0
   (for provenance). No NonCommercial/NoDerivatives assets in a shippable game.

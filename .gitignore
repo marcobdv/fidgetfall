@@ -1,4 +1,4 @@
-# Pi locally-installed packages & trust (keep settings.json, ignore fetched pkgs)
+# Pi locally-fetched packages & per-machine trust state (.pi/settings.json is tracked)
 .pi/npm/
 .pi/git/
 .pi/trust.json

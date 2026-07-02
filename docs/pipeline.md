@@ -7,9 +7,9 @@ How a game moves from idea to release at Fidgetfall. Each phase ends in a
 flowchart LR
     C["0 · Concept"] --> P1["1 · Pre-production"] --> P2["2 · Prototype"]
     P2 --> G{{"Greenlight gate<br/>is it fun?"}}
-    G -->|yes| P3["3 · Production"] --> P4["4 · Polish &amp; QA"] --> P5["5 · Release"]
+    G -->|yes| Grad{{"graduate to<br/>own repo · ADR-0008"}}
+    Grad --> P3["3 · Production"] --> P4["4 · Polish &amp; QA"] --> P5["5 · Release"]
     G -.->|pivot / iterate| C
-    P5 --> Grad{{"graduate to<br/>own repo · ADR-0008"}}
 ```
 
 ## Phase 0 — Concept
@@ -33,7 +33,9 @@ flowchart LR
 - `level-designer` → one greybox level that teaches the loop.
 - `qa-tester` → smoke tests for the core mechanics.
 - **Gate (Greenlight):** Creative Director confirms it's fun. If not, iterate or pivot
-  *here*, cheaply — do not scale a loop that isn't fun.
+  *here*, cheaply — do not scale a loop that isn't fun. On greenlight, the game
+  **graduates to its own repo** (ADR-0008, see `docs/graduation.md`); Phases 3-5
+  continue there.
 
 ## Phase 3 — Production
 **Goal:** build the game against the backlog in milestones.

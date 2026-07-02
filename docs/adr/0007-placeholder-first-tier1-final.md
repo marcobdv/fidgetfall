@@ -13,8 +13,8 @@ generated assets are considered done.
 core loop is always playable; never block gameplay on final assets. **Tier-1-final:**
 for the right art direction, Tier-1 procedural output (ADR-0005) *is* the final asset,
 not a placeholder. Stand-ins are prefixed `placeholder_` and tracked in
-`docs/art/asset-status.md`; anything still needing a human/Tier-2 asset goes on a
-shopping list.
+`games/<slug>/docs/art/asset-status.md`; anything still needing a human/Tier-2 asset
+goes on a shopping list.
 
 ## Consequences
 - Vertical slices stay runnable from day one (prove the loop is fun before scaling).

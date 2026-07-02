@@ -26,6 +26,7 @@ flowchart TB
     Orch -->|delegates| Roles
     subgraph Roles["17 role subagents · .pi/agents"]
         direction LR
+        ProdVis["Production &amp; Vision<br/>producer · creative-director"]
         Design["Design<br/>game · level · narrative · ux"]
         Eng["Engineering<br/>lead · gameplay · tools · tech-art"]
         ArtAudio["Art &amp; Audio<br/>concept · artist · animator · sound · composer"]
@@ -97,7 +98,7 @@ AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
 
 ## 📊 Status
 
-The studio is operational and has shipped its first game:
+The studio is operational and has built and graduated its first playable vertical slice:
 
 - **17 roles · 14 skills**, all wired and host-portable (verified running under Pi *and*
   under another agent host).
