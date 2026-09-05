@@ -36,18 +36,39 @@ export function openSeatMenu(menu, { seat, view, send, close, openChannel }) {
     await send(command);
   };
 
-  // Your own seat: say what you are, or take it back.
-  if (!isStoryteller && me && seat.id === me.seatId && (view.phase === 'day' || view.phase === 'nominations')) {
-    const claim = document.createElement('select');
-    claim.appendChild(new Option('claim a character…', ''));
+  const daytime = view.phase === 'day' || view.phase === 'nominations';
+
+  /** A character picker that claims to one audience. */
+  const claimPicker = (label, to, current) => {
+    const select = document.createElement('select');
+    select.className = to === null ? 'claim-picker public' : 'claim-picker private';
+    select.appendChild(new Option(label, ''));
     for (const character of view.script.characters) {
-      claim.appendChild(new Option(`${character.name} (${character.team})`, character.id));
+      select.appendChild(new Option(`${character.name} (${character.team})`, character.id));
     }
-    claim.value = seat.claim?.id ?? '';
-    claim.addEventListener('change', () => act({ type: 'claim', character: claim.value || null }));
-    menu.appendChild(claim);
-    if (seat.claim) {
-      menu.appendChild(button('Take back my claim', () => act({ type: 'claim', character: null })));
+    select.value = current ?? '';
+    select.addEventListener('change', () =>
+      act({ type: 'claim', character: select.value || null, to }),
+    );
+    return select;
+  };
+
+  // Your own seat: what you have said out loud, and to whom you have said what.
+  if (!isStoryteller && me && seat.id === me.seatId && daytime) {
+    menu.appendChild(claimPicker('tell the whole town I am…', null, seat.publicClaim?.id));
+    if (seat.publicClaim) {
+      menu.appendChild(
+        button('Take back my public claim', () => act({ type: 'claim', character: null, to: null })),
+      );
+    }
+    const told = me.claimsMade ?? [];
+    if (told.length) {
+      const ledger = document.createElement('div');
+      ledger.className = 'note-extra';
+      ledger.textContent = `you have said: ${told
+        .map((c) => `${c.character.name} → ${c.toName ?? 'town'}`)
+        .join(', ')}`;
+      menu.appendChild(ledger);
     }
   }
 
@@ -60,6 +81,10 @@ export function openSeatMenu(menu, { seat, view, send, close, openChannel }) {
     }
     if (view.phase === 'nominations' && me.alive) {
       menu.appendChild(button('Nominate', () => act({ type: 'nominate', target: seat.id })));
+    }
+    // Tell this one player something — which need not be what you told anyone else.
+    if (daytime && me.alive) {
+      menu.appendChild(claimPicker(`tell ${seat.name} alone I am…`, seat.id, undefined));
     }
   }
 

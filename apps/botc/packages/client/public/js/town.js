@@ -110,12 +110,24 @@ export function renderTown(svg, view, options) {
     if (showGrimoire && seat.character) sub.push(seat.character.name);
     else if (seat.id === view.you?.seatId && view.you?.character) sub.push(view.you.character.name);
     if (!seat.connected) sub.push('away');
-    if (seat.claim) {
+    // What they said out loud, and separately what they said to you alone.
+    let claimY = -TOKEN - 14;
+    if (seat.publicClaim) {
       group.appendChild(
         textNode(
           'text',
-          { class: `claim${seat.claimContested ? ' contested' : ''}`, x: 0, y: -TOKEN - 14 },
-          `"${seat.claim.name}"${seat.claimContested ? ' ⚠' : ''}`,
+          { class: `claim${seat.claimContested ? ' contested' : ''}`, x: 0, y: claimY },
+          `"${seat.publicClaim.name}"${seat.claimContested ? ' ⚠' : ''}`,
+        ),
+      );
+      claimY -= 24;
+    }
+    if (seat.claimToYou) {
+      group.appendChild(
+        textNode(
+          'text',
+          { class: `claim private${seat.claimToYouDiffers ? ' contested' : ''}`, x: 0, y: claimY },
+          `told you: ${seat.claimToYou.name}${seat.claimToYouDiffers ? ' ⚠' : ''}`,
         ),
       );
     }

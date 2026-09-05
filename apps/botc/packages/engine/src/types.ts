@@ -64,11 +64,6 @@ export interface Seat {
   /** A dead player keeps one vote token until they spend it. */
   ghostVote: boolean;
   connected: boolean;
-  /**
-   * What this player has told the town they are. Public, unverified, and quite
-   * possibly a lie — that is the point.
-   */
-  claimedCharacterId?: string;
   /** Grimoire data: only the Storyteller and the seat's owner ever see these. */
   characterId?: string;
   alignment?: Alignment;
@@ -112,6 +107,22 @@ export interface Timers {
 }
 
 export type TimerKey = keyof Timers;
+
+/**
+ * Someone telling someone else what character they are. Addressed: said either
+ * to the whole town or to one player in private. Nothing verifies it, and
+ * nothing stops you telling two people two different things — catching that is
+ * the town's job, not the engine's.
+ */
+export interface Claim {
+  id: string;
+  fromSeatId: string;
+  /** null means it was said out loud to everyone. */
+  toSeatId: string | null;
+  characterId: string;
+  day: number;
+  at: number;
+}
 
 export type NominationKind = 'execution' | 'exile';
 
@@ -157,6 +168,7 @@ export interface GameState {
   seats: Seat[];
   storytellerSeatId: string;
   nominations: Nomination[];
+  claims: Claim[];
   activeNominationId?: string;
   /** Who is currently condemned to die at dusk, and the tally that put them there. */
   onBlockSeatId?: string;

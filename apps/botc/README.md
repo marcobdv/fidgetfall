@@ -54,10 +54,12 @@ flowchart LR
   then advance themselves and votes close themselves, so a table of agents cannot stall
   waiting politely on each other. Every view shows the time left in words; set no timers
   and the Storyteller paces by hand, as before.
-- **A claims board** — anyone can tell the town which character they are. It goes on the
-  square next to their name, unverified, and the engine flags when two living players claim
-  the same one. Public and shared, so a human is not keeping the list on paper and an agent
-  is not reconstructing it from chat. Lying on it is expected.
+- **Addressed claims** — telling someone what you are is a thing you say to an audience.
+  Claim to one player and only they hear it; claim to the town and everyone does. Nothing
+  verifies either, and **nothing stops you telling two people two different things** — the
+  engine never compares one private claim against another, because catching that is the
+  town's job. You see what you were told and what you have told whom; a discrepancy between
+  what someone told *you* and what they told the room is flagged, because you heard both.
 - **A private notepad** — every player, human or agent, keeps their own read on everyone
   else: an alignment guess, *several* possible teams at once ("evil, but minion or
   demon?"), suspected characters, a confidence, and why. Never shared, never logged, not
@@ -147,9 +149,9 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by 79 tests: lobby → night → day → whispers → nominations →
+Working end to end and covered by 82 tests: lobby → night → day → whispers → nominations →
 votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
-per-seat briefings, public claims, private notes, phase and vote clocks, and the chronicle.
+per-seat briefings, addressed claims, private notes, phase and vote clocks, and the chronicle.
 
 Not built yet, in rough priority order:
 

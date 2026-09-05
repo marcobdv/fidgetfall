@@ -22,6 +22,7 @@ import {
   type Nomination,
   type Phase,
   type Restrictions,
+  type Claim,
   type Result,
   type Seat,
   type SeatKind,
@@ -98,6 +99,7 @@ export class Game {
       seats: [storyteller],
       storytellerSeatId: storyteller.id,
       nominations: [],
+      claims: [],
       highestTally: 0,
       timers: {},
       notes: new Map(),
@@ -485,11 +487,13 @@ export class Game {
   // ------------------------------------------------------------ claims
 
   /**
-   * Tell the town what you are. Public and unverified: the engine records the
-   * claim and notes who else is claiming the same character, and rules on
-   * nothing. A claim is a speech act, so it happens in daylight.
+   * Tell someone what character you are — the whole town, or one player in
+   * private. Nothing verifies it, and nothing stops you telling two people two
+   * different things. Working out that you have is the town's job: the engine
+   * shows each player only what was said *to* them, and never compares one
+   * private claim against another.
    */
-  claim(actorSeatId: string, characterId: string | null): Result<void> {
+  claim(actorSeatId: string, characterId: string | null, toSeatId: string | null): Result<void> {
     const from = this.requirePlayer(actorSeatId);
     if (!from.ok) return from;
     if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
@@ -497,13 +501,32 @@ export class Game {
     }
     if (!from.value.alive) return err('the dead do not claim');
 
+    let to: Seat | undefined;
+    if (toSeatId !== null) {
+      const found = this.requirePlayer(toSeatId);
+      if (!found.ok) return found;
+      if (found.value.id === from.value.id) return err('you already know what you are');
+      to = found.value;
+    }
+
     if (characterId === null) {
-      if (!from.value.claimedCharacterId) return err('you have not claimed anything');
-      delete from.value.claimedCharacterId;
+      const before = this.state.claims.length;
+      this.state.claims = this.state.claims.filter(
+        (c) => !(c.fromSeatId === from.value.id && c.toSeatId === (to?.id ?? null)),
+      );
+      if (this.state.claims.length === before) return err('you have not claimed anything there');
       this.emit(
         'player.claim',
-        { seatId: from.value.id, name: from.value.name, characterId: null, characterName: null, contestedBy: [] },
-        PUBLIC,
+        {
+          seatId: from.value.id,
+          name: from.value.name,
+          toSeatId: to?.id ?? null,
+          toName: to?.name ?? null,
+          characterId: null,
+          characterName: null,
+          contestedBy: [],
+        },
+        to ? toSeats(from.value.id, to.id) : PUBLIC,
         from.value.id,
       );
       return ok(undefined);
@@ -511,34 +534,81 @@ export class Game {
 
     const character = this.character(characterId);
     if (!character) return err(`"${characterId}" is not on this script`);
-    from.value.claimedCharacterId = character.id;
-    const contestedBy = this.players()
-      .filter((s) => s.id !== from.value.id && s.alive && s.claimedCharacterId === character.id)
-      .map((s) => s.name);
+
+    // One standing claim per audience; a new one replaces it.
+    this.state.claims = this.state.claims.filter(
+      (c) => !(c.fromSeatId === from.value.id && c.toSeatId === (to?.id ?? null)),
+    );
+    const claim: Claim = {
+      id: this.makeId('claim'),
+      fromSeatId: from.value.id,
+      toSeatId: to?.id ?? null,
+      characterId: character.id,
+      day: this.state.day,
+      at: this.now(),
+    };
+    this.state.claims.push(claim);
+
+    // Only a public claim can be publicly contested; private ones are private.
+    const contestedBy = to
+      ? []
+      : this.players()
+          .filter(
+            (s) =>
+              s.id !== from.value.id && s.alive && this.publicClaim(s.id)?.characterId === character.id,
+          )
+          .map((s) => s.name);
 
     this.emit(
       'player.claim',
       {
         seatId: from.value.id,
         name: from.value.name,
+        toSeatId: to?.id ?? null,
+        toName: to?.name ?? null,
         characterId: character.id,
         characterName: character.name,
         contestedBy,
       },
-      PUBLIC,
+      to ? toSeats(from.value.id, to.id) : PUBLIC,
       from.value.id,
     );
+    if (to) {
+      // The town sees them step aside, exactly as with a whisper.
+      this.emit(
+        'player.claim.observed',
+        { fromSeatId: from.value.id, toSeatId: to.id },
+        PUBLIC,
+        from.value.id,
+      );
+    }
     return ok(undefined);
   }
 
-  /** Characters more than one living player is claiming. */
+  /** What this player has told the whole town they are, if anything. */
+  publicClaim(seatId: string): Claim | undefined {
+    return this.state.claims.find((c) => c.fromSeatId === seatId && c.toSeatId === null);
+  }
+
+  /** What this player has been told privately, by whom. */
+  claimsMadeTo(seatId: string): Claim[] {
+    return this.state.claims.filter((c) => c.toSeatId === seatId);
+  }
+
+  /** Everything this player has claimed, to anyone — their own ledger of stories. */
+  claimsMadeBy(seatId: string): Claim[] {
+    return this.state.claims.filter((c) => c.fromSeatId === seatId);
+  }
+
+  /** Characters more than one living player is claiming *in public*. */
   contestedClaims(): { characterId: string; characterName: string; seatIds: string[] }[] {
     const byCharacter = new Map<string, string[]>();
     for (const seat of this.players()) {
-      if (!seat.alive || !seat.claimedCharacterId) continue;
-      const list = byCharacter.get(seat.claimedCharacterId) ?? [];
+      const claim = seat.alive ? this.publicClaim(seat.id) : undefined;
+      if (!claim) continue;
+      const list = byCharacter.get(claim.characterId) ?? [];
       list.push(seat.id);
-      byCharacter.set(seat.claimedCharacterId, list);
+      byCharacter.set(claim.characterId, list);
     }
     return [...byCharacter.entries()]
       .filter(([, seatIds]) => seatIds.length > 1)

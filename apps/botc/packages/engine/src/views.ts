@@ -24,10 +24,16 @@ export interface SeatView {
   hasNominatedToday: boolean;
   hasBeenNominatedToday: boolean;
   onBlock: boolean;
-  /** What they have told the town they are. Public, and possibly a lie. */
-  claim?: Character;
-  /** True when another living player is claiming the same character. */
+  /** What they have told the whole town they are. Public, and possibly a lie. */
+  publicClaim?: Character;
+  /** True when another living player publicly claims the same character. */
   claimContested?: boolean;
+  /** What they told *you*, privately. Nobody else can see this. */
+  claimToYou?: Character;
+  /** They told you one thing and the town another. Only you know. */
+  claimToYouDiffers?: boolean;
+  /** Storyteller only: every claim this player has made, and to whom. */
+  claimsMade?: { toName: string | null; character: Character }[];
   /** Present only for your own seat, or every seat when you are the Storyteller. */
   character?: Character;
   alignment?: Alignment;
@@ -80,6 +86,8 @@ export interface GameView {
         character?: Character;
         alignment?: Alignment;
         restrictions?: Restrictions;
+        /** Every claim you have made, and to whom. `toName: null` means aloud. */
+        claimsMade?: { toName: string | null; character: Character }[];
       }
     | null;
   seats: SeatView[];
@@ -135,10 +143,28 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         hasBeenNominatedToday: seat.hasBeenNominatedToday,
         onBlock: state.onBlockSeatId === seat.id,
       };
-      const claimed = game.character(seat.claimedCharacterId);
-      if (claimed) {
-        view.claim = claimed;
-        if (contested.has(claimed.id)) view.claimContested = true;
+      const publicClaim = game.character(game.publicClaim(seat.id)?.characterId);
+      if (publicClaim) {
+        view.publicClaim = publicClaim;
+        if (contested.has(publicClaim.id)) view.claimContested = true;
+      }
+      // What they told you is yours alone; what they told anyone else is not.
+      if (notepad) {
+        const toMe = game.claimsMadeTo(notepad).find((c) => c.fromSeatId === seat.id);
+        const told = game.character(toMe?.characterId);
+        if (told) {
+          view.claimToYou = told;
+          if (publicClaim && publicClaim.id !== told.id) view.claimToYouDiffers = true;
+        }
+      }
+      if (isST(viewer)) {
+        const made = game.claimsMadeBy(seat.id);
+        if (made.length) {
+          view.claimsMade = made.map((c) => ({
+            toName: c.toSeatId ? (game.seat(c.toSeatId)?.name ?? '?') : null,
+            character: game.character(c.characterId) as Character,
+          }));
+        }
       }
       if (isST(viewer) || mine) {
         const character = game.character(seat.characterId);
@@ -182,6 +208,12 @@ export function buildView(game: Game, viewer: Viewer): GameView {
               ...(character ? { character } : {}),
               ...(seat.alignment ? { alignment: seat.alignment } : {}),
               restrictions: seat.restrictions,
+              // Your own ledger: what you have told whom, so you can keep a
+              // story straight — or notice that you have not.
+              claimsMade: game.claimsMadeBy(seat.id).map((c) => ({
+                toName: c.toSeatId ? (game.seat(c.toSeatId)?.name ?? '?') : null,
+                character: game.character(c.characterId) as Character,
+              })),
             };
           })()
         : null;
@@ -282,12 +314,16 @@ export function describeEvent(game: Game, event: AnyEvent): string {
     case 'player.character':
       return `You are the ${d['characterName']} (${d['team']}).`;
     case 'player.claim': {
-      if (d['characterId'] === null) return `${d['name']} takes back their claim.`;
+      const to = d['toName'] ? ` to ${d['toName']}` : ' to the whole town';
+      if (d['characterId'] === null) return `${d['name']} takes back their claim${to}.`;
       const contested = d['contestedBy'] as string[];
+      if (d['toName']) return `${d['name']} tells ${d['toName']} privately: "I am the ${d['characterName']}."`;
       return contested.length
-        ? `${d['name']} claims the ${d['characterName']} — so does ${contested.join(', ')}. One of them is lying.`
-        : `${d['name']} claims the ${d['characterName']}.`;
+        ? `${d['name']} claims the ${d['characterName']} to the whole town — so does ${contested.join(', ')}. One of them is lying.`
+        : `${d['name']} claims the ${d['characterName']} to the whole town.`;
     }
+    case 'player.claim.observed':
+      return `${name(d['fromSeatId'] as string)} said something private to ${name(d['toSeatId'] as string)}.`;
     case 'nomination.made':
       return `${d['nominatorName']} nominates ${d['nomineeName']}${d['kind'] === 'exile' ? ' for exile' : ''}.`;
     case 'vote.cast':

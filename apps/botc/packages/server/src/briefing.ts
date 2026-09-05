@@ -130,35 +130,47 @@ honestly. Never use information you did not get through the game's own channels.
 
 const CLAIMS = `## Claims, and how to take one apart
 
-Anyone may tell the town which character they are, and it goes on the board next to their
-name. Nothing checks it. That board is the shape of the game: use \`claim\` to put yourself
-on it, and read it constantly.
+Telling someone what you are is a thing you say to an audience, not a fact you publish.
+\`claim\` takes a \`to\`: name a player and only they hear it, or leave it off and the whole
+town does. Nothing verifies either.
 
-**Before you believe a claim, ask:**
+**Nobody can see what you said to anyone else.** You may tell one player you are the
+Fortune Teller, another that you are the Chef, and a third nothing at all — and the only
+way that ever surfaces is if two of them compare notes out loud. That is the single most
+useful thing an evil player can do, and the single most useful habit a good town can have.
 
-- **Is it even on the script?** A character nobody could be is a lie you catch for free.
-- **Can it ever be checked?** Some characters speak once, on the first night — a Washerwoman,
-  an Investigator, a Chef. Nothing that happens later can ever contradict them, which makes
-  those the safest lies at the table. Others produce something new every night — an Empath, a
-  Fortune Teller, an Undertaker — and every night gives you another chance to catch them.
-  When someone claims the unfalsifiable kind at the exact moment they are under pressure,
-  say so out loud.
-- **Does it fit the corpses?** A claim has to survive who died, who didn't, and who was
-  protected. Most lies are built to survive the argument in front of them and not the week.
-- **Who does it save?** A claim that arrives the instant its owner is nominated is a shield,
-  not information.
-- **What is nobody claiming?** Run down the script and find the good characters no one has
-  claimed. Evil is usually sitting on one of them, quietly.
+Your own view always lists what you have told whom. Read it before you speak: a story you
+cannot remember is a story you will contradict.
 
-**Two players claiming one character** does not always mean one is evil. One of them may be
-being lied to — a good player can be handed false information and never know. The town
-forgets this constantly and executes the wrong half of the pair.
+**When someone tells you something in private, ask:**
+
+- **Is it on the script?** A character nobody could be is a lie you catch for free.
+- **Can it ever be checked?** Some characters speak once, on the first night — a
+  Washerwoman, an Investigator, a Chef. Nothing later can contradict them, which makes those
+  the safest lies at the table. Others produce something new every night — an Empath, a
+  Fortune Teller, an Undertaker — and every night is another chance to catch them. Someone
+  reaching for the unfalsifiable kind at the exact moment they are under pressure is telling
+  you something.
+- **Does it fit the corpses?** Most lies are built to survive the conversation in front of
+  them and not the week.
+- **Who does it save?** A claim that arrives the instant its owner is nominated is a shield.
+- **Have they said it anywhere else?** If they told you privately and told the town
+  something different, your view says so — you heard both. If they told *another player*
+  something different, nothing will tell you. Go and ask.
+
+**Compare notes.** Say out loud what you were told privately, and by whom, and ask others to
+do the same. It costs you the secrecy of that conversation and it is very often worth it: a
+player running two stories cannot survive one honest comparison. Evil's whole defence is
+that nobody bothers.
+
+**Two players publicly claiming one character** does not always mean one is evil. One of
+them may be being lied to — a good player can be handed false information and never know.
+Towns forget this constantly and execute the wrong half of the pair.
 
 **Making a claim that survives:** claim early or not at all, because a claim under duress
-reads as a defence. Give the information, not your conclusion, and let the town do the
-arithmetic — they trust what they worked out themselves. Keep it small; every extra detail
-is another thing that can be shown to be false.
-
+reads as a defence. Give the information, not your conclusion. Keep it small; every extra
+detail is another thing that can be shown to be false. And if you are running more than one
+story, know exactly who heard which.
 `;
 
 const RULES = `## What the server holds you to

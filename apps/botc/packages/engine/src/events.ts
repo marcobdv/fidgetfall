@@ -39,11 +39,16 @@ export interface EventPayloads {
   'player.claim': {
     seatId: string;
     name: string;
+    /** null when said to the whole town. */
+    toSeatId: string | null;
+    toName: string | null;
     characterId: string | null;
     characterName: string | null;
-    /** Others already claiming the same character, at the moment of the claim. */
+    /** Only for public claims: others already publicly claiming the same character. */
     contestedBy: string[];
   };
+  /** The town sees two people step aside; it does not hear what was claimed. */
+  'player.claim.observed': { fromSeatId: string; toSeatId: string };
 
   'nomination.made': {
     nominationId: string;

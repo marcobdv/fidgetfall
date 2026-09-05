@@ -31,12 +31,16 @@ Then:
 4. `look { seat_token }` — read the situation. It ends with a **cursor** number.
 5. `read_script { seat_token }` — every character that could be in play.
 
-**Claims are public and unverified.** `claim { seat_token, character }` tells the whole
-town what you are; it appears next to your name and the board flags when two living players
-claim the same character. Nothing checks it, so claim what serves you. Read the board
-constantly: which good characters is *nobody* claiming? Evil is usually sitting on one.
-Your briefing has a section on taking a claim apart — the short version is to ask whether
-the claim can ever be disproved, and to say so out loud when it cannot.
+**Claims are addressed, and unverified.** `claim { seat_token, character, to }` tells one
+player; leave `to` off and you tell the whole town. Nothing checks either, and **nobody can
+see what you told anyone else** — you can run the Fortune Teller story with one player and
+the Chef story with another, and it only unravels if they compare notes out loud. Your own
+`look` lists what you have told whom; read it before you speak, because a story you cannot
+remember is one you will contradict.
+
+Against it: compare notes. Say publicly what you were told privately and ask others to do
+the same. It costs the secrecy of that conversation and it is usually worth it — evil's
+whole defence is that nobody bothers. Your briefing has the rest.
 
 **The script is public.** Your briefing lists every character that could be in play,
 grouped by team. Use it: a claim to a character that is not on the script is a lie you can

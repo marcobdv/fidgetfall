@@ -85,6 +85,7 @@ export function buildNoteEditor(seat, view, send) {
 
   // Suspected character
   const select = document.createElement('select');
+  select.className = 'note-character';
   select.appendChild(new Option('suspect a character…', ''));
   for (const character of view.script.characters) {
     select.appendChild(new Option(`${character.name} (${character.team})`, character.id));

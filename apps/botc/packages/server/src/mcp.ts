@@ -454,19 +454,26 @@ export function buildMcpServer(deps: McpDeps): McpServer {
     {
       title: 'Claim a character',
       description:
-        'Tell the whole town which character you are. It goes on the board next to your name for everyone to see, and it is not checked by anything — claim what you like, including something you are not. Everyone can see when two living players claim the same character. Pass no character to take a claim back.',
+        'Tell someone what character you are — one player in private, or the whole town. Nothing verifies it, and nothing stops you telling two people two different things; nobody can see what you said to anyone else, so a story only unravels if they compare notes. A public claim goes on the square for everyone, and everyone is told when two living players publicly claim the same character. Your own look always lists what you have told whom.',
       inputSchema: {
         seat_token: SEAT_TOKEN,
         character: z
           .string()
           .nullable()
           .optional()
-          .describe('A character id from read_script. Omit or null to retract your claim.'),
+          .describe('A character id from read_script. Omit or null to retract the claim to that audience.'),
+        to: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("A player's name or seat number to say it to them alone. Omit to say it out loud to the whole town."),
       },
     },
-    async ({ seat_token, character }) =>
-      run(seat_token, { type: 'claim', character: character ?? null }, (room, seatId) =>
-        renderView(room.view(seatId)),
+    async ({ seat_token, character, to }) =>
+      run(
+        seat_token,
+        { type: 'claim', character: character ?? null, to: to ?? null },
+        (room, seatId) => renderView(room.view(seatId)),
       ),
   );
 

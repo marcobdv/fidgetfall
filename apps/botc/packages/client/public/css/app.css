@@ -227,6 +227,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .seat-note { font-size: 19px; fill: #b9a3d6; text-anchor: middle; }
 .claim { font-size: 20px; fill: var(--gold); text-anchor: middle; font-style: italic; }
 .claim.contested { fill: #e0a071; font-weight: 700; }
+.claim.private { fill: #b9a3d6; font-style: normal; font-size: 18px; }
 
 .note-editor {
   border-top: 1px solid var(--line);

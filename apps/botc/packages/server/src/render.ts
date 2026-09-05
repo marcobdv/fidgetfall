@@ -19,7 +19,19 @@ const seatLine = (seat: SeatView, youSeatId: string | undefined): string => {
   if (seat.hasNominatedToday) bits.push('has nominated today');
   if (seat.hasBeenNominatedToday) bits.push('has been nominated today');
   if (!seat.connected) bits.push('disconnected');
-  if (seat.claim) bits.push(`claims ${seat.claim.name}${seat.claimContested ? ' (CONTESTED)' : ''}`);
+  if (seat.publicClaim) {
+    bits.push(`publicly claims ${seat.publicClaim.name}${seat.claimContested ? ' (CONTESTED)' : ''}`);
+  }
+  if (seat.claimToYou) {
+    bits.push(
+      `told YOU they are the ${seat.claimToYou.name}${seat.claimToYouDiffers ? ' — which is NOT what they told the town' : ''}`,
+    );
+  }
+  if (seat.claimsMade?.length) {
+    bits.push(
+      `stories: ${seat.claimsMade.map((c) => `${c.character.name} to ${c.toName ?? 'the town'}`).join('; ')}`,
+    );
+  }
   if (seat.character) bits.push(`${seat.character.name}${seat.alignment ? ` / ${seat.alignment}` : ''}`);
   if (seat.reminders?.length) bits.push(`reminders: ${seat.reminders.map((r) => r.label).join(', ')}`);
   const you = seat.id === youSeatId ? ' (you)' : '';
@@ -90,13 +102,30 @@ export function renderView(view: GameView): string {
     if (evil.length) lines.push(`  evil: ${evil.map((c) => c.name).join(', ')}`);
   }
 
-  const claims = view.seats.filter((s) => s.claim && s.alive);
-  if (claims.length) {
-    lines.push('', 'Claims on the table:');
-    for (const seat of claims) {
+  const publicClaims = view.seats.filter((s) => s.publicClaim && s.alive);
+  if (publicClaims.length) {
+    lines.push('', 'Said out loud to everyone:');
+    for (const seat of publicClaims) {
       lines.push(
-        `  ${seat.name} says they are the ${seat.claim?.name}${seat.claimContested ? ' — CONTESTED, someone here is lying' : ''}`,
+        `  ${seat.name} claims the ${seat.publicClaim?.name}${seat.claimContested ? ' — CONTESTED, someone here is lying' : ''}`,
       );
+    }
+  }
+
+  const toldYou = view.seats.filter((s) => s.claimToYou);
+  if (toldYou.length) {
+    lines.push('', 'Told to you in private (nobody else knows they said this):');
+    for (const seat of toldYou) {
+      lines.push(
+        `  ${seat.name} told you they are the ${seat.claimToYou?.name}${seat.claimToYouDiffers ? ' — but they told the town something else' : ''}`,
+      );
+    }
+  }
+
+  if (view.you?.claimsMade?.length) {
+    lines.push('', 'What YOU have told people (keep your story straight):');
+    for (const made of view.you.claimsMade) {
+      lines.push(`  ${made.character.name} — to ${made.toName ?? 'the whole town'}`);
     }
   }
 

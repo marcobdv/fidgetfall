@@ -14,8 +14,15 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('nominate'), target: z.string() }),
   z.object({ type: z.literal('vote'), vote: z.boolean() }),
   z.object({ type: z.literal('leave') }),
-  /** A public, unverified statement of who you are. `null` retracts it. */
-  z.object({ type: z.literal('claim'), character: z.string().nullable() }),
+  /**
+   * An addressed, unverified statement of who you are: to one player, or to the
+   * whole town when `to` is omitted. `character: null` retracts it.
+   */
+  z.object({
+    type: z.literal('claim'),
+    character: z.string().nullable(),
+    to: z.string().nullable().optional(),
+  }),
 
   // Private notes: one player's read on another. Never shared, never logged.
   z.object({
@@ -117,8 +124,11 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
       return game.castVote(seatId, command.vote);
     case 'leave':
       return game.leave(seatId);
-    case 'claim':
-      return game.claim(seatId, command.character);
+    case 'claim': {
+      if (!command.to) return game.claim(seatId, command.character, null);
+      const to = target(room, command.to);
+      return to.ok ? game.claim(seatId, command.character, to.value.id) : to;
+    }
 
     case 'note_set': {
       const to = target(room, command.target);
