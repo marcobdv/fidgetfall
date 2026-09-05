@@ -171,7 +171,7 @@ describe('a game with humans and agents', () => {
     // The script is public — every character on it is listed for everyone — but
     // who is playing which one is not.
     assert.match(good.text, /## The script: Whispers in the Orchard/);
-    assert.match(good.text, /\*\*Blight\*\*/, 'the Blight is listed as a possibility');
+    assert.match(good.text, /\*\*DEMON\*\* \(1\) — Blight/, 'the Blight is listed as a possibility');
     assert.doesNotMatch(good.text, /Ana[^\n]*Blight/, 'but never attached to a player');
     assert.match(demon.text, /## The script: Whispers in the Orchard/);
 

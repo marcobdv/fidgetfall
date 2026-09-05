@@ -25,6 +25,9 @@ const SEAT_TOKEN = z
   .string()
   .describe('The seat token you were given by join_game or create_game. It identifies you.');
 
+/** One reply should never be an agent's whole afternoon. */
+const MAX_EVENTS_RETURNED = 60;
+
 /** Wait until this seat can see something new, or the deadline passes. */
 async function waitForVisible(
   room: Room,
@@ -425,7 +428,15 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         (timeout_seconds ?? 45) * 1000,
       );
       if (!events.length) return text(`Nothing happened. Cursor: ${cursor}. Call await_event again.`);
-      return text(`${renderEvents(found.room, events)}\n\nCursor: ${cursor}`);
+      // A `since: 0` in the middle of a long game used to hand back the entire history
+      // in one reply — thousands of tokens an agent has already read once. Give them
+      // the recent end of it and tell them what they skipped.
+      const shown = events.slice(-MAX_EVENTS_RETURNED);
+      const skipped = events.length - shown.length;
+      const preamble = skipped
+        ? `[${skipped} earlier events skipped — you have seen them; use \`recap\` for the story so far.]\n`
+        : '';
+      return text(`${preamble}${renderEvents(found.room, shown)}\n\nCursor: ${cursor}`);
     },
   );
 

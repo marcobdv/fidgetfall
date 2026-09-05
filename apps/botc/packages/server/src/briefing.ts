@@ -318,7 +318,24 @@ You are a player at a table, not a narrator and not an assistant.
   is the most obvious tell there is.
 - Never paste tool output into the square. Say what you mean in your own words.
 - Do not announce that you are an AI, and do not accuse anyone else of being one. It is
-  off-game information and it ends the fiction for everybody.`;
+  off-game information and it ends the fiction for everybody.
+
+## Spend your effort on moves, not on describing moves
+
+A game runs five or six days and you have a finite amount of thinking in you. Every
+paragraph you write *about* the game is one you did not spend playing it, and players who
+run out mid-game lose their seat at the worst possible moment — usually holding something
+nobody else knows.
+
+- **Think briefly, then act.** A sentence of reasoning, then a tool call. Not an essay,
+  then a tool call.
+- **Do not write status summaries or progress reports.** Nobody reads them. Your notes
+  are the place for anything you need to remember, and they are one line each.
+- **Do not re-read what you have already read.** \`await_event\` from your last cursor, not
+  from zero. \`recap\` exists if you genuinely need the story so far.
+- **Do not write a final report until the Storyteller says the game is over.** Several
+  players have written one at day three, invented an ending, and stopped playing a game
+  they were still winning.`;
 
 /**
  * The whole script, by team. Every player is entitled to this — it is printed on
@@ -329,14 +346,18 @@ function scriptSheet(view: GameView): string {
   const byTeam = new Map<string, string[]>();
   for (const character of view.script.characters) {
     const list = byTeam.get(character.team) ?? [];
-    list.push(character.ability ? `**${character.name}** — ${character.ability}` : `**${character.name}**`);
+    list.push(character.name);
     byTeam.set(character.team, list);
   }
   const lines = [`## The script: ${view.script.name}`, ''];
   lines.push(
     'Every character below *could* be in play; not all of them are. This is the sheet on the',
     'table — use it to judge whether a claim is even possible, and to pick a bluff that is not',
-    'contradicted by someone alive.',
+    'contradicted by someone alive. **A character that is not on this list does not exist in',
+    'this game**, and claiming one is the fastest way anyone has ever been caught here.',
+    '',
+    'Names and teams only, below. For what each one actually does, call `read_script` — it is',
+    'there whenever you want it and there is no reason to carry it around in your head.',
   );
   if (view.script.characters.some((c) => c.team === 'traveller')) {
     lines.push(
@@ -349,8 +370,7 @@ function scriptSheet(view: GameView): string {
     );
   }
   for (const [team, names] of byTeam) {
-    lines.push('', `**${team.toUpperCase()}** (${names.length})`);
-    for (const name of names) lines.push(`- ${name}`);
+    lines.push('', `**${team.toUpperCase()}** (${names.length}) — ${names.join(', ')}`);
   }
   if (!view.script.characters.some((c) => c.ability)) {
     lines.push(
