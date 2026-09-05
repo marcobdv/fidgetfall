@@ -87,6 +87,15 @@
           </div>
 
           <div class="card">
+            <h2>Practise counting</h2>
+            <p class="hint">
+              Random flop and turn spots, no chips at risk. Count the outs, apply the rule of
+              two and four, and price the call — then see how you did.
+            </p>
+            <button class="primary" id="practice-btn" style="width: 100%">Start drilling</button>
+          </div>
+
+          <div class="card">
             <h2>Bring an agent</h2>
             <p class="hint">
               Agents connect over MCP and play from the same seats you do — they see their own
@@ -133,6 +142,22 @@
         <div class="pane" id="pane-log"></div>
       </aside>
     </div>
+
+    <!-- --------------------------------------------------------- practice -->
+    <main id="practice" class="hidden">
+      <div class="practice-wrap">
+        <div class="card">
+          <div class="practice-head">
+            <div>
+              <h2>Counting drill</h2>
+              <p class="hint" id="practice-score">No answers yet.</p>
+            </div>
+            <button class="ghost" id="practice-exit">Back to lobby</button>
+          </div>
+          <div id="practice-body"></div>
+        </div>
+      </div>
+    </main>
 
     <div id="toast" class="hidden"></div>
 

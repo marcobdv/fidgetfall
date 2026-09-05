@@ -13,6 +13,14 @@ import { randomUUID } from "node:crypto";
 import { Table, type PlayerKind, type TableConfig, type TableView } from "../engine/table.js";
 import type { Action } from "../engine/types.js";
 import { coach, type CoachAdvice } from "../coach/advice.js";
+import {
+  drillQuestions,
+  isDrillable,
+  markDrill,
+  type DrillAnswer,
+  type DrillMarking,
+  type DrillSpot,
+} from "../coach/drill.js";
 import { reviewHand, type HandReview } from "../coach/review.js";
 import { botRng, policyFor, type BotPolicy } from "../bots/policies.js";
 import type { Rng } from "../engine/rng.js";
@@ -328,8 +336,12 @@ export class PokerRoom {
     return this.revisions.get(tableId) ?? 0;
   }
 
-  /** Coaching advice for the seat holding `token`, or null when there is none. */
-  advise(token: string): CoachAdvice | null {
+  /**
+   * Everything the coach and the drill both need about a seat's current spot,
+   * or null when there is nothing to say. Both go through this so a quiz can
+   * never be marked against a different situation from the one it posed.
+   */
+  private spotFor(token: string) {
     const { tableId, playerId } = this.resolve(token);
     const table = this.getTable(tableId);
     const player = table.players.get(playerId);
@@ -343,17 +355,82 @@ export class PokerRoom {
     if (opponents === 0) return null;
 
     const legal = hand.legalActions(player.seat);
-    return coach({
-      hole: inHand.holeCards,
-      board: hand.board,
-      opponents,
-      pot: hand.pot,
-      toCall: legal?.toCall ?? 0,
-      street: hand.street,
+    const toCall = legal?.toCall ?? 0;
+
+    return {
+      table,
+      hand,
+      player,
+      inHand,
       legal,
-      stack: inHand.stack,
-      playersLeftToAct: countLeftToAct(table, player.seat),
+      opponents,
+      toCall,
+      // Identifies this exact decision. A quiz answered after the street moves
+      // on would otherwise be marked against a spot the player never saw.
+      key: `${table.handNumber}:${hand.street}:${hand.pot}:${toCall}`,
+    };
+  }
+
+  /** Coaching advice for the seat holding `token`, or null when there is none. */
+  advise(token: string): CoachAdvice | null {
+    const spot = this.spotFor(token);
+    if (!spot) return null;
+
+    return coach({
+      hole: spot.inHand.holeCards,
+      board: spot.hand.board,
+      opponents: spot.opponents,
+      pot: spot.hand.pot,
+      toCall: spot.toCall,
+      street: spot.hand.street,
+      legal: spot.legal,
+      stack: spot.inHand.stack,
+      playersLeftToAct: countLeftToAct(spot.table, spot.player.seat),
     });
+  }
+
+  /**
+   * The counting questions for this seat's current spot — no answers attached.
+   * Null when there is nothing worth asking (preflop, or a checked river).
+   */
+  quiz(token: string): { key: string; spot: DrillSpot } | null {
+    const spot = this.spotFor(token);
+    if (!spot) return null;
+
+    const questions = drillQuestions(
+      spot.inHand.holeCards,
+      spot.hand.board,
+      spot.hand.pot,
+      spot.toCall,
+      spot.opponents,
+    );
+    return isDrillable(questions) ? { key: spot.key, spot: questions } : null;
+  }
+
+  /**
+   * Marks an attempt and, having done so, releases the full coaching for that
+   * spot. Answering is what unlocks the answer.
+   */
+  markQuiz(
+    token: string,
+    key: string,
+    answer: DrillAnswer,
+  ): { marking: DrillMarking; advice: CoachAdvice | null; stale: boolean } {
+    const spot = this.spotFor(token);
+    if (!spot) return { marking: emptyMarking(), advice: null, stale: true };
+    if (spot.key !== key) return { marking: emptyMarking(), advice: null, stale: true };
+
+    return {
+      marking: markDrill(
+        spot.inHand.holeCards,
+        spot.hand.board,
+        spot.hand.pot,
+        spot.toCall,
+        answer,
+      ),
+      advice: this.advise(token),
+      stale: false,
+    };
   }
 
   /** Review of a finished hand for the seat holding `token`. */
@@ -525,6 +602,10 @@ export class PokerRoom {
       }
     }
   }
+}
+
+function emptyMarking(): DrillMarking {
+  return { score: { right: 0, asked: 0 } };
 }
 
 function countLeftToAct(table: Table, seat: number): number {

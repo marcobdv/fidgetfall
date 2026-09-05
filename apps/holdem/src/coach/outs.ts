@@ -7,6 +7,10 @@
  * one the rule of two and four is calibrated against. It deliberately ignores
  * whether the improvement is actually good enough to win, which is why the coach
  * always shows real equity next to the out count rather than instead of it.
+ *
+ * `classifyOut` is the single judgement of whether one card counts, and both the
+ * tally below and the drill's per-card feedback go through it. Teaching a player
+ * a rule the coach does not itself follow would be worse than not teaching.
  */
 
 import { cardToString, fullDeck, type Card } from "../engine/cards.js";
@@ -17,6 +21,48 @@ export interface OutGroup {
   /** What these cards make, e.g. "Flush". */
   makes: string;
   cards: string[];
+}
+
+/** Why one specific card does or does not count as an out. */
+export type OutVerdict =
+  | { out: true; makes: string }
+  | { out: false; reason: "seen" | "no-improvement" | "board-pairs"; explain: string };
+
+/** Judges a single card. The tally and the drill feedback both use this. */
+export function classifyOut(
+  hole: readonly Card[],
+  board: readonly Card[],
+  card: Card,
+): OutVerdict {
+  if ([...hole, ...board].includes(card)) {
+    return { out: false, reason: "seen", explain: "that card is already on the table." };
+  }
+
+  const current = evaluate([...hole, ...board]);
+  const improved = evaluate([...hole, ...board, card]);
+
+  if (improved.category <= current.category) {
+    return {
+      out: false,
+      reason: "no-improvement",
+      explain: `it leaves you with ${CATEGORY_NAMES[current.category].toLowerCase()} — no better than you already hold.`,
+    };
+  }
+
+  // A card that improves the board equally for everyone is not an out for us.
+  // Pairing the board on the flop is the common case: an eight landing on
+  // A-8-4 gives every player a pair of eights, so it is nobody's out.
+  if (improved.category <= boardCategory([...board, card])) {
+    return {
+      out: false,
+      reason: "board-pairs",
+      explain:
+        `it makes ${CATEGORY_NAMES[improved.category].toLowerCase()} out of the board itself, ` +
+        "so every player still in the hand gets exactly the same thing.",
+    };
+  }
+
+  return { out: true, makes: CATEGORY_NAMES[improved.category] };
 }
 
 export interface OutsResult {
@@ -33,26 +79,17 @@ export function countOuts(hole: readonly Card[], board: readonly Card[]): OutsRe
     return { count: 0, groups: [], ruleOfThumbPct: 0, cardsToCome };
   }
 
-  const current = evaluate([...hole, ...board]);
-  const seen = new Set([...hole, ...board]);
   const grouped = new Map<string, string[]>();
   let count = 0;
 
   for (const card of fullDeck()) {
-    if (seen.has(card)) continue;
-    const improved = evaluate([...hole, ...board, card]);
-    if (improved.category <= current.category) continue;
-
-    // A card that improves the board equally for everyone is not an out for us.
-    // Pairing the board on the flop is the common case: an eight landing on
-    // A-8-4 gives every player a pair of eights, so it is nobody's out.
-    if (improved.category <= boardCategory([...board, card])) continue;
+    const verdict = classifyOut(hole, board, card);
+    if (!verdict.out) continue;
 
     count++;
-    const label = CATEGORY_NAMES[improved.category];
-    const bucket = grouped.get(label) ?? [];
+    const bucket = grouped.get(verdict.makes) ?? [];
     bucket.push(cardToString(card));
-    grouped.set(label, bucket);
+    grouped.set(verdict.makes, bucket);
   }
 
   const groups = [...grouped.entries()]
@@ -77,7 +114,7 @@ const RANK_ORDER = "23456789TJQKA";
  * ranks and suits directly. Straights and flushes are impossible below five
  * cards, which is why only the counting categories appear here.
  */
-function boardCategory(cards: readonly Card[]): HandCategory {
+export function boardCategory(cards: readonly Card[]): HandCategory {
   if (cards.length >= 5) return evaluate(cards).category;
 
   const rankCounts = new Map<number, number>();

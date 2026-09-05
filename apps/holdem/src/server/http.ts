@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { BOT_POLICIES } from "../bots/policies.js";
+import { markPracticeSpot, practiceSpot } from "../coach/drill.js";
 import { LocalRoomClient } from "../shared/client.js";
 import { buildMcpServer } from "../mcp/tools.js";
 import { PokerRoom, type CreateTableOptions } from "./room.js";
@@ -184,6 +185,23 @@ async function handle(
     });
   }
 
+  if (path === "/api/practice" && method === "GET") {
+    const seedParam = url.searchParams.get("seed");
+    const seed = seedParam === null ? (Math.random() * 0x7fffffff) | 0 : asInt(seedParam, "seed");
+    // The spot goes out without its answers; marking rebuilds it from the seed.
+    return sendJson(res, 200, { seed, spot: practiceSpot(seed) });
+  }
+
+  if (path === "/api/practice/check" && method === "POST") {
+    const body = await readJson(req);
+    const seed = asInt(body.seed, "seed");
+    return sendJson(res, 200, {
+      seed,
+      spot: practiceSpot(seed),
+      marking: markPracticeSpot(seed, drillAnswerFrom(body)),
+    });
+  }
+
   if (path === "/api/tables" && method === "GET") {
     return sendJson(res, 200, { tables: room.listTables() });
   }
@@ -239,6 +257,18 @@ async function handle(
     case "GET coach": {
       const token = asString(url.searchParams.get("token"), "token");
       return sendJson(res, 200, { advice: room.advise(token) });
+    }
+
+    case "GET quiz": {
+      const token = asString(url.searchParams.get("token"), "token");
+      return sendJson(res, 200, { quiz: room.quiz(token) });
+    }
+
+    case "POST quiz": {
+      const body = await readJson(req);
+      const token = asString(body.token, "token");
+      const key = asString(body.key, "key");
+      return sendJson(res, 200, room.markQuiz(token, key, drillAnswerFrom(body)));
     }
 
     case "GET review": {
@@ -410,6 +440,23 @@ export function parseAction(body: Record<string, unknown>): Action {
   const type = raw as ActionType;
   if (type !== "bet" && type !== "raise") return { type };
   return { type, amount: asInt(body.amount, "amount") };
+}
+
+/** Reads a drill attempt. Every field is optional — an unanswered question is
+ * marked as unanswered rather than rejected, so a player can skip one. */
+function drillAnswerFrom(body: Record<string, unknown>) {
+  const optionalInt = (value: unknown, field: string) =>
+    value === undefined || value === null || value === "" ? undefined : asInt(value, field);
+
+  const cards = body.outCards;
+  return {
+    outs: optionalInt(body.outs, "outs"),
+    ruleOfThumbPct: optionalInt(body.ruleOfThumbPct, "ruleOfThumbPct"),
+    breakEvenPct: optionalInt(body.breakEvenPct, "breakEvenPct"),
+    outCards: Array.isArray(cards)
+      ? cards.slice(0, 52).map((card, i) => asString(card, `outCards[${i}]`))
+      : undefined,
+  };
 }
 
 function asString(value: unknown, field: string): string {

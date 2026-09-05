@@ -38,24 +38,47 @@ down**. That is the whole setup.
 Development:
 
 ```bash
-npm test             # 136 tests: rules, evaluator, coach, room, HTTP, MCP
+npm test             # 157 tests: rules, evaluator, coach, room, HTTP, MCP
 npm run typecheck
 ```
 
-## Playing as a human
+## Learning to count
 
-The table deals itself. When it is your turn, the action bar offers exactly what is
-legal, and the **Coach** panel shows the arithmetic behind the decision:
+A panel that hands you the numbers teaches you to read a panel. So the coach **asks
+before it tells**. When it is your turn, it puts up the three calculations a player has
+to be able to do at the table:
 
-- what you actually hold, and which five cards make it;
-- your equity against the opponents still in the hand;
-- your outs, grouped by what they make, with the rule of two and four;
-- the pot odds — what fraction of the time you need to win to break even on the call;
-- **how much to distrust that number**, given the size of the bet you are facing;
-- a suggested action, with the reasoning that produced it.
+- **How many outs do you have?** Type a count, or click the actual cards — the whole
+  remaining deck is there to pick from.
+- **Roughly what are your chances?** The rule of two and four, on the outs you counted.
+- **What share of the time must you win to break even?** The price you are being offered.
 
-When the hand ends, **Last hand** replays your decisions and recomputes your equity at
-each one against the price you were being offered, and names the decision that mattered.
+Answer, and it marks you. The outs question is marked card by card: outs you missed are
+highlighted in amber, cards you counted that are not outs in red, each with the reason —
+*"it makes a pair out of the board itself, so every player still in the hand gets exactly
+the same thing."* The right total reached with the wrong cards is not marked right, because
+it is not counting.
+
+The marking is written to teach the method rather than the answer. Get twelve outs wrong
+but multiply correctly and it says so: *"Your arithmetic was right — 12 x 4 — but on the
+wrong out count."*
+
+Only then does the coach's full read appear: hand strength, real equity, pot odds, how
+much to distrust that equity given the size of the bet, and a suggested action with its
+reasoning.
+
+**Practice** (from the lobby, or `#/practice`) is the same drill without chips: random
+flop and turn spots, one after another, with a running tally. That is where the counting
+actually gets learned; the table is where it gets used.
+
+Answers are never in the page before you have committed to yours. A practice spot travels
+as a seed and is rebuilt on the server to be marked, so there is nothing to read ahead.
+
+## Playing at the table
+
+The action bar offers exactly what is legal. When the hand ends, **Last hand** replays
+your decisions and recomputes your equity at each one against the price you were being
+offered, and names the decision that mattered.
 
 The coach measures equity against *random* hands, because that needs no assumptions about
 how anyone plays. But nobody shoves a random hand, so that number flatters you exactly
@@ -169,6 +192,10 @@ the coach does and see nothing you cannot see.
 | `POST` | `/api/tables/:id/act` | `{token, action, amount?}` |
 | `POST` | `/api/tables/:id/leave` | stand up |
 | `GET` | `/api/tables/:id/coach?token=` | coaching for that seat |
+| `GET` | `/api/tables/:id/quiz?token=` | the counting questions for that seat — no answers |
+| `POST` | `/api/tables/:id/quiz` | submit an attempt; marking and coaching come back |
+| `GET` | `/api/practice` | a practice spot, identified by its seed |
+| `POST` | `/api/practice/check` | mark an attempt at a practice spot |
 | `GET` | `/api/tables/:id/review?token=&hand=` | post-hand review |
 | `POST` | `/api/tables/:id/bots` | seat a bot |
 | `GET` | `/api/bots` | the bot roster |
@@ -180,13 +207,13 @@ the coach does and see nothing you cannot see.
 src/engine/    the rules. Pure, deterministic, no I/O — cards, evaluator,
                betting state machine, side pots, table lifecycle
 src/coach/     equity (Monte Carlo + exact river), outs, pot-odds advice,
-               post-hand review
+               post-hand review, and the counting drill
 src/bots/      the four opponent archetypes
 src/server/    the room (identity, clocks, bot turns) and the HTTP/WS server
 src/mcp/       the agent-facing tools, the text renderer, and both transports
 public/        the browser client — no framework, no build step
 tools/         mcp-cli.mjs, a one-shot MCP client for debugging
-test/          136 tests
+test/          157 tests
 ```
 
 Two properties are worth calling out because everything else leans on them:

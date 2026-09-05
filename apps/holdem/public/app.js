@@ -44,6 +44,29 @@ const app = {
   coachFor: null,
   reviewedHand: 0,
   pane: "coach",
+  // The live quiz standing between the player and the coach's answers.
+  quiz: null,
+  quizKey: null,
+  marking: null,
+  // The standalone practice drill.
+  practice: null,
+};
+
+/** Running tally of drill answers, kept across sessions. */
+const tally = {
+  read() {
+    try {
+      return JSON.parse(store.get("drill-tally") || "") || { right: 0, asked: 0 };
+    } catch {
+      return { right: 0, asked: 0 };
+    }
+  },
+  add(score) {
+    const now = this.read();
+    const next = { right: now.right + score.right, asked: now.asked + score.asked };
+    store.set("drill-tally", JSON.stringify(next));
+    return next;
+  },
 };
 
 // --------------------------------------------------------------------- api --
@@ -283,13 +306,17 @@ function render(state) {
   renderActions(state);
   renderLog(state);
 
-  // The coach is recomputed once per decision point, not per frame.
+  // One quiz per decision point, not per frame. The coach's answers arrive only
+  // once the player has committed to their own.
   const key = `${state.handNumber}:${state.street}:${state.actingSeat}:${state.pot}`;
   if (state.coaching && state.legalActions && app.coachFor !== key) {
     app.coachFor = key;
-    fetchCoach();
-  } else if (!state.legalActions && !app.coach) {
-    renderCoach(null);
+    app.coach = null;
+    app.marking = null;
+    drill.reset();
+    fetchQuiz();
+  } else if (!state.legalActions && !app.coach && !app.quiz) {
+    renderCoachPane();
   }
 
   // A finished hand is worth reviewing exactly once.
@@ -482,7 +509,242 @@ function renderLog(state) {
     .join("");
 }
 
+// ------------------------------------------------------------------ drill --
+
+/**
+ * The counting drill, shared by the live coach panel and the practice screen.
+ *
+ * It renders the questions, collects an attempt, and renders the marking. The
+ * answers are not in the page until the server sends the marking back, so there
+ * is nothing to read ahead — which is the point of asking first.
+ */
+const drill = {
+  /** Cards the player has clicked as outs, for the current spot. */
+  picked: new Set(),
+
+  reset() {
+    this.picked = new Set();
+  },
+
+  /** The spot itself: your two cards, the board, and the price. */
+  spotHtml(spot) {
+    return `
+      <div class="spot">
+        <span class="label">Your hand &middot; the board</span>
+        ${spot.hole.map((c) => cardHtml(c, "small")).join("")}
+        <span class="sep"></span>
+        ${spot.board.map((c) => cardHtml(c, "small")).join("")}
+        ${
+          spot.toCall > 0
+            ? `<span class="price">to call<b>${spot.toCall}</b>into a pot of ${spot.pot}</span>`
+            : `<span class="price">pot<b>${spot.pot}</b>no bet to face</span>`
+        }
+      </div>`;
+  },
+
+  /** The questions, as inputs. Nothing here reveals an answer. */
+  questionsHtml(spot) {
+    const rows = [];
+
+    if (spot.asks.outs) {
+      rows.push(`
+        <div class="q">
+          <div class="prompt">How many outs do you have?</div>
+          <div class="sub">Cards still to come that would lift you to a better hand.
+            You hold ${escapeHtml(spot.handNow)} right now.</div>
+          <div class="entry">
+            <input type="number" id="d-outs" min="0" max="47" placeholder="?" />
+            <span class="unit">outs</span>
+            <button class="ghost" id="d-pick-toggle">Pick the cards</button>
+          </div>
+          <div id="d-deck" class="hidden"></div>
+        </div>`);
+    }
+
+    if (spot.asks.ruleOfThumb) {
+      rows.push(`
+        <div class="q">
+          <div class="prompt">Roughly what are your chances of getting there?</div>
+          <div class="sub">The rule of two and four, with ${spot.cardsToCome}
+            card${spot.cardsToCome === 1 ? "" : "s"} to come.</div>
+          <div class="entry">
+            <input type="number" id="d-rule" min="0" max="100" placeholder="?" />
+            <span class="unit">%</span>
+          </div>
+        </div>`);
+    }
+
+    if (spot.asks.potOdds) {
+      rows.push(`
+        <div class="q">
+          <div class="prompt">What share of the time must you win to break even?</div>
+          <div class="sub">Calling ${spot.toCall} into a pot of ${spot.pot}.</div>
+          <div class="entry">
+            <input type="number" id="d-odds" min="0" max="100" placeholder="?" />
+            <span class="unit">%</span>
+          </div>
+        </div>`);
+    }
+
+    return rows.join("");
+  },
+
+  /** Wires the card grid, which opens on demand and stays open once marked. */
+  bindDeck(spot, marked) {
+    const toggle = $("d-pick-toggle");
+    const deck = $("d-deck");
+    if (!deck) return;
+
+    const render = () => {
+      deck.innerHTML =
+        `<div class="deck">` +
+        spot.unseen
+          .map((code) => {
+            const classes = ["pick"];
+            if (RED_SUITS.has(code[1])) classes.push("red");
+            if (marked) {
+              const missed = marked.missed.some((m) => m.card === code);
+              const wrong = marked.wrong.some((w) => w.card === code);
+              if (missed) classes.push("miss");
+              else if (wrong) classes.push("bad");
+              else if (this.picked.has(code)) classes.push("hit");
+            } else if (this.picked.has(code)) {
+              classes.push("on");
+            }
+            return `<button class="${classes.join(" ")}" data-card="${code}" ${
+              marked ? "disabled" : ""
+            }>${code[0]}${SUIT_GLYPH[code[1]] ?? code[1]}</button>`;
+          })
+          .join("") +
+        `</div>` +
+        (marked
+          ? `<div class="legend">
+               <span class="hit">correctly counted</span>
+               <span class="miss">an out you missed</span>
+               <span class="bad">not an out</span>
+             </div>`
+          : `<div class="legend"><span>click every card you think is an out</span></div>`);
+
+      if (marked) return;
+      for (const button of deck.querySelectorAll("[data-card]")) {
+        button.onclick = () => {
+          // Toggle in place rather than redrawing the grid: rebuilding 47
+          // buttons on every click flickers and throws away focus.
+          const code = button.dataset.card;
+          if (this.picked.has(code)) this.picked.delete(code);
+          else this.picked.add(code);
+          button.classList.toggle("on", this.picked.has(code));
+
+          // Keep the count in step with the picks — that is the point of picking.
+          const outsInput = $("d-outs");
+          if (outsInput) outsInput.value = String(this.picked.size);
+        };
+      }
+    };
+
+    if (marked) {
+      deck.classList.remove("hidden");
+      render();
+      return;
+    }
+
+    if (toggle) {
+      toggle.onclick = () => {
+        deck.classList.toggle("hidden");
+        toggle.textContent = deck.classList.contains("hidden") ? "Pick the cards" : "Hide the cards";
+        if (!deck.classList.contains("hidden")) render();
+      };
+    }
+  },
+
+  /** Reads the attempt out of the form. */
+  attempt() {
+    const value = (id) => {
+      const el = $(id);
+      if (!el || el.value === "") return undefined;
+      return Number(el.value);
+    };
+    return {
+      outs: value("d-outs"),
+      ruleOfThumbPct: value("d-rule"),
+      breakEvenPct: value("d-odds"),
+      outCards: this.picked.size > 0 ? [...this.picked] : undefined,
+    };
+  },
+
+  /** The marking, rendered under each question it answers. */
+  markingHtml(marking) {
+    const parts = [];
+    const row = (mark, extra = "") => `
+      <div class="mark ${mark.right ? "right" : "wrong"}">
+        ${mark.yours === null ? "You skipped this. " : ""}${escapeHtml(mark.note)}${extra}
+      </div>`;
+
+    if (marking.outs) {
+      const groups = marking.outs.groups.length
+        ? `<div class="groups">${marking.outs.groups
+            .map(
+              (g) => `<div class="group-row"><b>${g.cards.length} to a ${escapeHtml(
+                g.makes.toLowerCase(),
+              )}</b>${g.cards.map((c) => cardHtml(c, "small")).join("")}</div>`,
+            )
+            .join("")}</div>`
+        : "";
+      const why = marking.outs.wrong.length
+        ? `<ul class="why-list">${marking.outs.wrong
+            .slice(0, 6)
+            .map((w) => `<li><b>${w.card}</b> — ${escapeHtml(w.why)}</li>`)
+            .join("")}</ul>`
+        : "";
+      parts.push({ id: "d-outs", mark: marking.outs, html: row(marking.outs, groups + why) });
+    }
+    if (marking.ruleOfThumb) {
+      parts.push({ id: "d-rule", mark: marking.ruleOfThumb, html: row(marking.ruleOfThumb) });
+    }
+    if (marking.potOdds) {
+      parts.push({ id: "d-odds", mark: marking.potOdds, html: row(marking.potOdds) });
+    }
+    return parts;
+  },
+
+  /** Places each marking under its question and locks the inputs. */
+  showMarking(marking) {
+    for (const part of this.markingHtml(marking)) {
+      const input = $(part.id);
+      if (!input) continue;
+      // Put the player's own answer back in the box: "14, not 6" only lands if
+      // the 6 they typed is still in front of them.
+      if (part.mark.yours !== null) input.value = String(part.mark.yours);
+      input.disabled = true;
+      const question = input.closest(".q");
+      if (question && !question.querySelector(".mark")) {
+        question.insertAdjacentHTML("beforeend", part.html);
+      }
+    }
+    const toggle = $("d-pick-toggle");
+    if (toggle) toggle.remove();
+  },
+};
+
 // ------------------------------------------------------------------ coach --
+
+async function fetchQuiz() {
+  if (!app.token) return;
+  try {
+    const { quiz } = await api(
+      `/api/tables/${app.tableId}/quiz?token=${encodeURIComponent(app.token)}`,
+    );
+    app.quiz = quiz ? quiz.spot : null;
+    app.quizKey = quiz ? quiz.key : null;
+
+    // Nothing countable here (preflop, or a checked-down river) — there is no
+    // question worth asking, so the coach speaks up as it always did.
+    if (!app.quiz) return fetchCoach();
+    renderCoachPane();
+  } catch {
+    /* the spot moved on before the question could be posed */
+  }
+}
 
 async function fetchCoach() {
   if (!app.token) return;
@@ -491,10 +753,74 @@ async function fetchCoach() {
       `/api/tables/${app.tableId}/coach?token=${encodeURIComponent(app.token)}`,
     );
     app.coach = advice;
-    renderCoach(advice);
+    renderCoachPane();
   } catch {
     /* the spot moved on before the coach answered */
   }
+}
+
+/** Submits the attempt; the marking comes back with the coaching attached. */
+async function submitQuiz() {
+  const button = $("d-check");
+  if (button) button.disabled = true;
+  try {
+    const result = await api(`/api/tables/${app.tableId}/quiz`, {
+      method: "POST",
+      body: JSON.stringify({ token: app.token, key: app.quizKey, ...drill.attempt() }),
+    });
+    if (result.stale) {
+      toast("That spot has moved on — the table did not wait.");
+      app.quiz = null;
+      return fetchCoach();
+    }
+    app.marking = result.marking;
+    app.coach = result.advice;
+    tally.add(result.marking.score);
+    renderCoachPane();
+  } catch (error) {
+    toast(error.message);
+    if (button) button.disabled = false;
+  }
+}
+
+/** Draws whichever stage the coach panel is at: question, marking, or answer. */
+function renderCoachPane() {
+  const pane = $("pane-coach");
+
+  if (app.quiz && !app.marking) {
+    const record = tally.read();
+    pane.innerHTML =
+      drill.spotHtml(app.quiz) +
+      drill.questionsHtml(app.quiz) +
+      `<div class="drill-actions">
+         <button class="primary" id="d-check">Check my answers</button>
+       </div>
+       <div class="disclaimer">
+         Answer to see the coach's read on this spot.
+         ${record.asked ? `You have ${record.right} of ${record.asked} right so far.` : ""}
+       </div>`;
+    drill.bindDeck(app.quiz, null);
+    $("d-check").onclick = submitQuiz;
+    return;
+  }
+
+  if (app.quiz && app.marking) {
+    const record = tally.read();
+    pane.innerHTML =
+      drill.spotHtml(app.quiz) +
+      drill.questionsHtml(app.quiz) +
+      `<div class="disclaimer streak">
+         <b>${app.marking.score.right}/${app.marking.score.asked}</b> this spot &middot;
+         ${record.right} of ${record.asked} all told
+       </div>
+       <div id="coach-answer"></div>`;
+    drill.bindDeck(app.quiz, app.marking.outs ?? { missed: [], wrong: [] });
+    drill.showMarking(app.marking);
+    if (app.coach) $("coach-answer").innerHTML = adviceHtml(app.coach);
+    return;
+  }
+
+  renderCoach(app.coach);
 }
 
 function renderCoach(advice) {
@@ -503,6 +829,11 @@ function renderCoach(advice) {
     pane.innerHTML = `<div class="empty">The coach speaks up when it is your turn.</div>`;
     return;
   }
+  pane.innerHTML = adviceHtml(advice);
+}
+
+/** The coach's full read, once it has been earned. */
+function adviceHtml(advice) {
 
   const equity = Math.round(advice.equity.equity * 100);
   // The bar the suggestion actually used: the raw price plus whatever margin the
@@ -513,7 +844,7 @@ function renderCoach(advice) {
   const rawPrice = advice.potOdds ? Math.round(advice.potOdds.breakEven * 100) : null;
   const short = breakEven !== null && equity < breakEven;
 
-  pane.innerHTML = `
+  return `
     <div class="headline">
       <div class="made">${escapeHtml(advice.handDescription)}</div>
       <div class="numbers">
@@ -601,6 +932,90 @@ function renderReview(review) {
     }`;
 }
 
+// --------------------------------------------------------------- practice --
+
+/**
+ * The standalone drill: random spots, no chips, no clock. This is where the
+ * counting actually gets learned; the table is where it gets used.
+ */
+async function openPractice() {
+  $("lobby").classList.add("hidden");
+  $("table-view").classList.add("hidden");
+  $("practice").classList.remove("hidden");
+  $("leave-btn").classList.add("hidden");
+  $("header-meta").textContent = "";
+  location.hash = "#/practice";
+  await nextPracticeSpot();
+}
+
+function closePractice() {
+  $("practice").classList.add("hidden");
+  $("lobby").classList.remove("hidden");
+  location.hash = "";
+  refreshTables();
+}
+
+async function nextPracticeSpot() {
+  drill.reset();
+  try {
+    const { seed, spot } = await api("/api/practice");
+    app.practice = { seed, spot, marking: null };
+    renderPractice();
+  } catch (error) {
+    $("practice-body").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+async function checkPracticeSpot() {
+  const button = $("d-check");
+  if (button) button.disabled = true;
+  try {
+    const { marking } = await api("/api/practice/check", {
+      method: "POST",
+      body: JSON.stringify({ seed: app.practice.seed, ...drill.attempt() }),
+    });
+    app.practice.marking = marking;
+    tally.add(marking.score);
+    renderPractice();
+  } catch (error) {
+    toast(error.message);
+    if (button) button.disabled = false;
+  }
+}
+
+function renderPractice() {
+  const { spot, marking } = app.practice;
+  const record = tally.read();
+
+  $("practice-score").innerHTML = record.asked
+    ? `<span class="streak"><b>${record.right}</b> of <b>${record.asked}</b> answers right
+       (${Math.round((record.right / record.asked) * 100)}%)</span>`
+    : "Count the outs, then the odds. Answers are marked, not given.";
+
+  $("practice-body").innerHTML =
+    drill.spotHtml(spot) +
+    drill.questionsHtml(spot) +
+    `<div class="drill-actions">
+       ${marking ? "" : `<button class="primary" id="d-check">Check my answers</button>`}
+       <button class="${marking ? "primary" : "ghost"}" id="d-next">
+         ${marking ? "Next spot" : "Skip this one"}
+       </button>
+     </div>` +
+    (marking
+      ? `<div class="disclaimer streak">
+           <b>${marking.score.right}/${marking.score.asked}</b> on this spot
+         </div>`
+      : "");
+
+  drill.bindDeck(spot, marking ? (marking.outs ?? { missed: [], wrong: [] }) : null);
+  if (marking) drill.showMarking(marking);
+  else $("d-check").onclick = checkPracticeSpot;
+  $("d-next").onclick = nextPracticeSpot;
+}
+
+$("practice-btn").addEventListener("click", () => void openPractice());
+$("practice-exit").addEventListener("click", closePractice);
+
 // ------------------------------------------------------------------- tabs --
 
 for (const button of document.querySelectorAll(".tabs button")) {
@@ -652,11 +1067,13 @@ function boot() {
     if (!app.tableId) refreshTables();
   }, 3000);
 
-  // Deep link straight into a table: #/t/<id>
+  // Deep link straight into a table: #/t/<id>, or into the drill: #/practice
   const match = /^#\/t\/([A-Za-z0-9_-]+)$/.exec(location.hash);
   if (match) {
     const tableId = match[1];
     void openTable(tableId, store.get(`seat:${tableId}`));
+  } else if (location.hash === "#/practice") {
+    void openPractice();
   }
 
   // Redraw the action timer smoothly between state pushes.

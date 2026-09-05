@@ -449,3 +449,123 @@ header {
   z-index: 50;
   max-width: 80vw;
 }
+
+
+/* ---------------------------------------------------------------- drill --- */
+
+.practice-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+#practice {
+  flex: 1;
+  overflow: auto;
+}
+.practice-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.practice-head > div:first-child { flex: 1; }
+.practice-head .hint { margin: 4px 0 0; }
+
+/* The spot being asked about: your cards, then the board. */
+.spot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 14px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1a5a45, #14432f);
+  border: 1px solid #24705a;
+  margin-bottom: 16px;
+}
+.spot .sep { width: 14px; }
+.spot .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #9fd8b8;
+  width: 100%;
+}
+.spot .price {
+  margin-left: auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #cfe9dc;
+}
+.spot .price b { color: var(--gold); font-size: 16px; display: block; }
+
+/* One question per row: prompt, input, then its marking. */
+.q { border-top: 1px solid var(--line); padding: 13px 0; }
+.q:first-of-type { border-top: 0; }
+.q .prompt { font-weight: 600; margin-bottom: 3px; }
+.q .sub { color: var(--ink-dim); font-size: 12px; margin-bottom: 8px; }
+.q .entry { display: flex; align-items: center; gap: 8px; }
+.q .entry input { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+.q .entry .unit { color: var(--ink-dim); }
+
+.mark { margin-top: 8px; font-size: 13px; padding-left: 24px; position: relative; }
+.mark::before {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.mark.right { color: #a8e6c4; }
+.mark.right::before { content: "✓"; color: var(--good); }
+.mark.wrong { color: #f3c3bf; }
+.mark.wrong::before { content: "✗"; color: var(--bad); }
+
+.groups { margin-top: 7px; display: flex; flex-direction: column; gap: 5px; }
+.group-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.group-row b { font-size: 12px; color: var(--ink-dim); min-width: 118px; }
+
+/* Clickable deck for picking the actual out cards. */
+/* Fits its container, not the viewport: the same grid has to work in a 340px
+   sidebar and across the full width of the practice screen. */
+.deck {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 4px;
+  margin-top: 10px;
+}
+.pick {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #12181f;
+  color: var(--ink-dim);
+  padding: 5px 0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+}
+.pick:hover { border-color: #4a5c70; color: var(--ink); }
+.pick.red { color: #e08b86; }
+.pick.on { background: #1d3c56; border-color: var(--accent); color: #cfe6ff; }
+.pick.hit { background: #163a29; border-color: var(--good); color: #a8e6c4; }
+.pick.miss { background: #3a2418; border-color: var(--gold); color: #ffd79a; }
+.pick.bad { background: #3a1c1a; border-color: var(--bad); color: #ffb3ad; }
+.pick[disabled] { cursor: default; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--ink-faint); }
+.legend span::before { content: "■ "; }
+.legend .hit::before { color: var(--good); }
+.legend .miss::before { color: var(--gold); }
+.legend .bad::before { color: var(--bad); }
+
+.drill-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.why-list { margin: 6px 0 0; padding-left: 18px; color: var(--ink-dim); font-size: 12px; }
+.why-list li { margin-bottom: 3px; }
+
+.streak {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+.streak b { color: var(--ink); }
