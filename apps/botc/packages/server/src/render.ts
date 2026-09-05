@@ -117,6 +117,24 @@ export function renderView(view: GameView): string {
     if (evil.length) lines.push(`  evil: ${evil.map((c) => c.name).join(', ')}`);
   }
 
+  // The script sheet is a card lying face-up on the table all game, not something
+  // you read once at the start. Two evil players in a row have claimed characters
+  // that were not in the game because by day one the briefing was a distant memory
+  // and the nearest plausible role name came from somewhere else entirely.
+  const byTeam = new Map<string, string[]>();
+  for (const character of view.script.characters) {
+    if (character.team === 'traveller') continue;
+    const list = byTeam.get(character.team) ?? [];
+    list.push(character.name);
+    byTeam.set(character.team, list);
+  }
+  if (byTeam.size) {
+    lines.push('', `On the script — nothing else exists in this game (${view.script.name}):`);
+    for (const [team, names] of byTeam) {
+      lines.push(`  ${team}: ${names.join(', ')}`);
+    }
+  }
+
   const publicClaims = view.seats.filter((s) => s.publicClaim && s.alive);
   if (publicClaims.length) {
     lines.push('', 'Said out loud to everyone:');

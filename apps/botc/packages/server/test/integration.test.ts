@@ -8,6 +8,16 @@ import { AgentClient, HumanClient, call, getJson, postJson } from './helpers.js'
  * browser uses, five agents on MCP, one full day/night cycle with a nomination,
  * a vote, an execution, and a called game.
  */
+/**
+ * A player's `look` carries the whole script sheet, because at a table that card
+ * lies face-up all game. That means every character name appears in every look,
+ * so a test for "this player cannot see X" has to ask about the *state* — the seat
+ * rows, the claims — and not about the public list of what exists.
+ */
+function withoutScriptSheet(look: string): string {
+  return look.replace(/\nOn the script[\s\S]*?(?=\n\n)/, '');
+}
+
 describe('a game with humans and agents', () => {
   let server: StartedServer;
   let port: number;
@@ -89,7 +99,7 @@ describe('a game with humans and agents', () => {
     // A player only ever sees their own character.
     const anaLook = await ana.call('look');
     assert.match(anaLook.text, /Your character: Orchardist/);
-    assert.doesNotMatch(anaLook.text, /Blight/, 'Ana cannot see the demon');
+    assert.doesNotMatch(withoutScriptSheet(anaLook.text), /Blight/, 'Ana cannot see the demon');
 
     // ...but the Storyteller sees the whole grimoire.
     const stView = st.view() as { seats: { name: string; character?: { name: string } }[] };
@@ -327,11 +337,19 @@ describe('a game with humans and agents', () => {
 
     const benSees = await ben.call('look');
     assert.match(benSees.text, /Ana told you they are the Beekeeper/);
-    assert.doesNotMatch(benSees.text, /Cellarman/, 'Ben cannot see what Cal was told');
+    assert.doesNotMatch(
+      withoutScriptSheet(benSees.text),
+      /Cellarman/,
+      'Ben cannot see what Cal was told',
+    );
 
     const calSees = await cal.call('look');
     assert.match(calSees.text, /Ana told you they are the Cellarman/);
-    assert.doesNotMatch(calSees.text, /Beekeeper/, 'and Cal cannot see what Ben was told');
+    assert.doesNotMatch(
+      withoutScriptSheet(calSees.text),
+      /Beekeeper/,
+      'and Cal cannot see what Ben was told',
+    );
 
     // A fourth player, told nothing, sees only that they spoke.
     const deeSees = await dee.call('look');
