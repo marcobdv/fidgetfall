@@ -307,8 +307,14 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return `The Storyteller shows you: ${d['text']}`;
     case 'st.grimoire':
       return `[grimoire] ${d['change']}`;
-    case 'player.died':
-      return `${d['name']} is dead (${d['cause']}).`;
+    case 'player.died': {
+      // "X is dead (the Imp)" was read as "X *was* the Imp" by a player, who then
+      // disbelieved their own role for the rest of the game. Never again.
+      const cause = String(d['cause']);
+      if (cause === 'execution') return `${d['name']} is dead, executed by the town.`;
+      if (cause === 'exile') return `${d['name']} is dead, exiled by the town.`;
+      return `${d['name']} is dead, killed by ${cause}.`;
+    }
     case 'player.revived':
       return `${d['name']} is alive again.`;
     case 'player.character':
@@ -327,7 +333,11 @@ export function describeEvent(game: Game, event: AnyEvent): string {
     case 'nomination.made':
       return `${d['nominatorName']} nominates ${d['nomineeName']}${d['kind'] === 'exile' ? ' for exile' : ''}.`;
     case 'vote.cast':
-      return `${d['name']} votes ${d['vote'] ? 'YES' : 'no'}${d['ghost'] ? ' (ghost vote)' : ''}.`;
+      return (
+        `${d['name']} votes ${d['vote'] ? 'YES' : 'no'}${d['ghost'] ? ' (ghost vote)' : ''}. ` +
+        `Running count: ${d['yesCount']} yes, ${d['noCount']} no — ${d['threshold']} needed, ` +
+        `${d['yetToVote']} yet to vote.`
+      );
     case 'nomination.closed': {
       const result = d['result'];
       const detail =

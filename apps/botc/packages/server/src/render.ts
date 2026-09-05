@@ -138,9 +138,16 @@ export function renderView(view: GameView): string {
   if (view.nomination) {
     const nomination = view.nomination;
     const nameOf = (id: string) => view.seats.find((s) => s.id === id)?.name ?? '?';
+    const nominee = view.seats.find((s) => s.id === nomination.nomineeSeatId);
+    const claimed = nominee?.publicClaim ?? nominee?.claimToYou;
     lines.push(
       '',
       `Open ${nomination.kind}: ${nameOf(nomination.nominatorSeatId)} nominated ${nameOf(nomination.nomineeSeatId)}.`,
+      // You are about to vote on a life; you should not have to remember what
+      // they said they were.
+      claimed
+        ? `${nominee?.name} claims to be the ${claimed.name}${nominee?.publicClaim ? '' : ' (told to you privately)'}. Weigh what being wrong costs before you vote.`
+        : `${nominee?.name} has claimed nothing.`,
       `Votes so far: ${nomination.yesCount} yes, threshold ${nomination.threshold}.`,
     );
     if (nomination.secondsLeft !== undefined) {

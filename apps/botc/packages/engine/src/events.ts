@@ -58,7 +58,18 @@ export interface EventPayloads {
     nomineeSeatId: string;
     nomineeName: string;
   };
-  'vote.cast': { nominationId: string; seatId: string; name: string; vote: boolean; ghost: boolean };
+  'vote.cast': {
+    nominationId: string;
+    seatId: string;
+    name: string;
+    vote: boolean;
+    ghost: boolean;
+    /** Running count, so nobody has to reconstruct it from earlier lines. */
+    yesCount: number;
+    noCount: number;
+    threshold: number;
+    yetToVote: number;
+  };
   'nomination.closed': {
     nominationId: string;
     tally: number;

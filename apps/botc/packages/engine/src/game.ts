@@ -1111,9 +1111,24 @@ export class Game {
       }
     }
     nomination.votes.push({ seatId: from.value.id, vote, ghost, at: this.now() });
+    const eligible =
+      nomination.kind === 'exile' ? this.players().length : this.players().filter((s) => s.alive).length;
     this.emit(
       'vote.cast',
-      { nominationId: nomination.id, seatId: from.value.id, name: from.value.name, vote, ghost },
+      {
+        nominationId: nomination.id,
+        seatId: from.value.id,
+        name: from.value.name,
+        vote,
+        ghost,
+        yesCount: nomination.votes.filter((v) => v.vote).length,
+        noCount: nomination.votes.filter((v) => !v.vote).length,
+        threshold:
+          nomination.kind === 'exile'
+            ? Math.ceil(this.players().length / 2)
+            : Math.ceil(this.alivePlayers().length / 2),
+        yetToVote: Math.max(0, eligible - nomination.votes.length),
+      },
       PUBLIC,
       from.value.id,
     );

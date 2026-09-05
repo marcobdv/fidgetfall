@@ -50,6 +50,12 @@ around, and a vote that can be trusted.
 - **Offer yourself.** A day the town spends executing you is a day it does not spend
   executing a live information role. Sometimes that trade is right — take it deliberately,
   not by accident.
+- **Earn the right to be believed before you need it.** A Saint who claims at four votes is
+  claiming under execution pressure, and the town is right to hear desperation in that. Build
+  credit early — make a read that lands, get two players to vouch for you out loud — so that
+  when you say it, it is confirmation rather than a plea. Better still, have someone else say
+  the consequence for you: the town listens to a confirmed Undertaker saying "if he is the
+  Saint we lose" far more than to the man on the block saying it about himself.
 - **If you are the Saint, this cuts the other way.** Your execution ends the game for your
   own side, so you are the most expensive body at the table. Say so early enough that the
   town can find a cheaper one — a spent Investigator or Chef — rather than late enough that

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Game } from '../src/game.js';
 import { buildView } from '../src/views.js';
 import { canSee } from '../src/events.js';
+import { describeEvent } from '../src/views.js';
 import { demoScript, expectErr, expectOk, table, toNominations } from './helpers.js';
 
 describe('seating and setup', () => {
@@ -208,6 +209,45 @@ describe('nominations and votes', () => {
     expectOk(t.game.stKill(t.st.id, t.byName('Dee').id, 'the demon'));
     toNominations(t);
     assert.match(expectErr(t.game.nominate(t.byName('Dee').id, t.byName('Ben').id)), /dead cannot nominate/);
+  });
+});
+
+describe('reporting deaths and votes', () => {
+  it('never lets a death read as a role reveal', () => {
+    // "Edith is dead (the Imp)" was read by two separate players as "Edith WAS
+    // the Imp", and both then disbelieved their own true briefing all game.
+    const t = table(['Ana', 'Ben', 'Cal'], { Ana: 'seer' });
+    expectOk(t.game.stKill(t.st.id, t.byName('Ana').id, 'the Imp'));
+    const death = t.game.log.find((e) => e.type === 'player.died');
+    assert.ok(death);
+    const line = describeEvent(t.game, death);
+    assert.equal(line, 'Ana is dead, killed by the Imp.');
+    assert.doesNotMatch(line, /\(the Imp\)/, 'no bare parenthetical to misread');
+  });
+
+  it('names the town as the killer for an execution', () => {
+    const t = table(['Ana', 'Ben', 'Cal', 'Dee', 'Eve']);
+    toNominations(t);
+    expectOk(t.game.nominate(t.byName('Ana').id, t.byName('Ben').id));
+    for (const name of ['Ana', 'Cal', 'Dee']) expectOk(t.game.castVote(t.byName(name).id, true));
+    expectOk(t.game.stCloseNomination(t.st.id));
+    expectOk(t.game.stAdvancePhase(t.st.id));
+    const death = t.game.log.filter((e) => e.type === 'player.died').at(-1);
+    assert.equal(describeEvent(t.game, death!), 'Ben is dead, executed by the town.');
+  });
+
+  it('carries the running count on every vote', () => {
+    const t = table(['Ana', 'Ben', 'Cal', 'Dee', 'Eve']);
+    toNominations(t);
+    expectOk(t.game.nominate(t.byName('Ana').id, t.byName('Ben').id));
+    expectOk(t.game.castVote(t.byName('Ana').id, true));
+    expectOk(t.game.castVote(t.byName('Cal').id, false));
+    const vote = t.game.log.filter((e) => e.type === 'vote.cast').at(-1);
+    assert.ok(vote);
+    assert.match(
+      describeEvent(t.game, vote),
+      /Cal votes no\. Running count: 1 yes, 1 no — 3 needed, 3 yet to vote\./,
+    );
   });
 });
 
