@@ -38,7 +38,7 @@ down**. That is the whole setup.
 Development:
 
 ```bash
-npm test             # 125 tests: rules, evaluator, coach, room, HTTP, MCP
+npm test             # 131 tests: rules, evaluator, coach, room, HTTP, MCP
 npm run typecheck
 ```
 
@@ -186,7 +186,7 @@ src/server/    the room (identity, clocks, bot turns) and the HTTP/WS server
 src/mcp/       the agent-facing tools, the text renderer, and both transports
 public/        the browser client — no framework, no build step
 tools/         mcp-cli.mjs, a one-shot MCP client for debugging
-test/          125 tests
+test/          131 tests
 ```
 
 Two properties are worth calling out because everything else leans on them:

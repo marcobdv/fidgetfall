@@ -339,6 +339,7 @@ export class PokerHand {
     const player = this.players.get(seat)!;
     const legal = this.legalActions(seat)!;
     const potBefore = this.pot;
+    const stackBefore = player.stack;
 
     let recordedAmount = 0;
 
@@ -376,6 +377,7 @@ export class PokerHand {
       action: action.type as ActionType,
       amount: recordedAmount,
       total: player.committed,
+      stackBefore,
       toCall: legal.toCall,
       potBefore,
       street: this.street,

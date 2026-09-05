@@ -139,6 +139,14 @@ describe("legal actions", () => {
     expect(hand.players.get(2)!.status).toBe("all-in");
   });
 
+  it("records the acting seat's stack on the action, for later replay", () => {
+    const hand = makeHand();
+    hand.act(0, { type: "raise", amount: 60 });
+    const event = hand.events.find((e) => e.type === "action");
+    // Seat 0 is the button with nothing posted, so it still had its full stack.
+    expect(event).toMatchObject({ seat: 0, stackBefore: 1000, total: 60 });
+  });
+
   it("returns null for a seat that is not to act", () => {
     const hand = makeHand();
     expect(hand.legalActions(1)).toBeNull();

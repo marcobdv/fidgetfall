@@ -163,6 +163,101 @@ describe("bots at the table", () => {
   });
 });
 
+describe("the running commentary accounts for every chip", () => {
+  /**
+   * The log is what a player actually reads, and it is rendered separately from
+   * the engine's own pot arithmetic. This replays a whole session from those
+   * lines alone — the way an onlooker would — and checks the books balance.
+   *
+   * Short stacks at these blinds mean constant all-ins and side pots, which is
+   * exactly where a rendering slip would hide.
+   */
+  function capture(r: PokerRoom, tableId: string): string[] {
+    const captured: string[] = [];
+    let previous: string[] = [];
+    r.onChange((id) => {
+      if (id !== tableId) return;
+      const log = r.getTable(tableId).log;
+      // The table keeps a rolling window, so append only what is new.
+      let overlap = 0;
+      for (let i = log.length; i >= 0; i--) {
+        if (i === 0 || previous.slice(-i).join("\u0000") === log.slice(0, i).join("\u0000")) {
+          overlap = i;
+          break;
+        }
+      }
+      captured.push(...log.slice(overlap));
+      previous = [...log];
+    });
+    return captured;
+  }
+
+  it("balances a short-stack session full of all-ins and side pots", () => {
+    const { room: r, advance } = room();
+    const table = r.createTable({
+      name: "Audit",
+      smallBlind: 10,
+      bigBlind: 20,
+      minBuyIn: 260,
+      maxBuyIn: 260,
+      bots: ["maniac", "station", "balanced", "rock"],
+    });
+    const lines = capture(r, table.config.id);
+
+    for (let i = 0; i < 6000 && table.history.length < 20; i++) advance();
+    expect(table.history.length).toBeGreaterThanOrEqual(20);
+
+    const paid = new Map<string, number>();
+    const took = new Map<string, number>();
+    const bought = new Map<string, number>();
+    let committed = new Map<string, number>();
+    const add = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) ?? 0) + n);
+
+    for (const line of lines) {
+      let m: RegExpExecArray | null;
+      if ((m = /^(.+?) sits in seat \d+ with (\d+) chips$/.exec(line))) {
+        add(bought, m[1]!, Number(m[2]));
+      } else if (/^— Hand #/.test(line) || /^(Flop|Turn|River):/.test(line)) {
+        committed = new Map();
+      } else if ((m = /^(.+?) posts the (?:small blind|big blind|ante) \((\d+)\)$/.exec(line))) {
+        add(paid, m[1]!, Number(m[2]));
+        add(committed, m[1]!, Number(m[2]));
+      } else if ((m = /^(.+?) calls (\d+)/.exec(line))) {
+        add(paid, m[1]!, Number(m[2]));
+        add(committed, m[1]!, Number(m[2]));
+      } else if ((m = /^(.+?) (?:bets|raises to) (\d+)/.exec(line))) {
+        // Bets and raises are quoted as round totals, not chips added.
+        const total = Number(m[2]);
+        add(paid, m[1]!, total - (committed.get(m[1]!) ?? 0));
+        committed.set(m[1]!, total);
+      } else if ((m = /^(\d+) returned to (.+?) \(uncalled\)$/.exec(line))) {
+        add(took, m[2]!, Number(m[1]));
+      } else if ((m = /^(.+?) wins (\d+)$/.exec(line))) {
+        add(took, m[1]!, Number(m[2]));
+      }
+    }
+
+    const into = [...paid.values()].reduce((a, b) => a + b, 0);
+    const outOf = [...took.values()].reduce((a, b) => a + b, 0);
+    // The next hand's blinds are usually already posted when the loop stops, so
+    // what is still in the middle is exactly what has not been paid out yet.
+    const inPlay = table.hand && !table.hand.isComplete ? table.hand.pot : 0;
+    expect(into).toBeGreaterThan(0);
+    expect(into - outOf).toBe(inPlay);
+
+    // And the per-player books match the stacks the engine is actually holding.
+    for (const player of table.seatedPlayers) {
+      // Chips already staked in the live hand have left the stack and are
+      // counted as paid, so the two sides line up without any adjustment.
+      const net = (took.get(player.name) ?? 0) - (paid.get(player.name) ?? 0);
+      expect(player.stack).toBe((bought.get(player.name) ?? 0) + net);
+    }
+    expect(
+      table.seatedPlayers.reduce((sum, p) => sum + p.stack, 0) + inPlay,
+    ).toBe([...bought.values()].reduce((a, b) => a + b, 0));
+  });
+});
+
 describe("the action clock", () => {
   it("folds a seat that lets its clock run out facing the blind", () => {
     const { room: r, advance } = room();

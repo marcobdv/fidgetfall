@@ -3,7 +3,7 @@ import { parseCards } from "../src/engine/cards.js";
 import { equityVsRandom } from "../src/coach/equity.js";
 import { countOuts } from "../src/coach/outs.js";
 import { coach, startingHandLabel } from "../src/coach/advice.js";
-import { reviewHand } from "../src/coach/review.js";
+import { judge, reviewHand } from "../src/coach/review.js";
 import { pressureOf } from "../src/coach/pressure.js";
 import { Table, type TableConfig } from "../src/engine/table.js";
 
@@ -274,6 +274,65 @@ describe("the coach against a big bet", () => {
     });
     expect(advice.pressure.level).toBe("light");
     expect(advice.tips.find((t) => t.label === "Read the bet")).toBeUndefined();
+  });
+});
+
+describe("how the review grades a decision", () => {
+  const moment = (over: Partial<Parameters<typeof judge>[0]> = {}) => ({
+    street: "flop" as const,
+    action: "fold",
+    amount: 0,
+    toCall: 100,
+    potBefore: 400,
+    board: ["Ks", "9s", "2d"],
+    equityPct: 30,
+    breakEvenPct: 20,
+    ...over,
+  });
+
+  it("does not call a fold right while quoting numbers that say otherwise", () => {
+    // The bug: any fold inside 12 points was praised as "right", with a note
+    // claiming you needed more equity than you in fact had.
+    const verdict = judge(moment({ equityPct: 31, breakEvenPct: 27, toCall: 130, potBefore: 1000 }));
+    expect(verdict.verdict).not.toBe("good");
+    expect(verdict.note).not.toMatch(/was right/);
+  });
+
+  it("calls out a fold that gave up a clearly profitable call", () => {
+    const verdict = judge(moment({ equityPct: 60, breakEvenPct: 20 }));
+    expect(verdict.verdict).toBe("tight");
+    expect(verdict.note).toMatch(/gave up a profitable call/);
+  });
+
+  it("approves a fold that was actually short of the price", () => {
+    const verdict = judge(moment({ equityPct: 12, breakEvenPct: 40 }));
+    expect(verdict.verdict).toBe("good");
+    expect(verdict.note).toMatch(/was right/);
+    // The two figures in the sentence must be the right way round.
+    const [needed, had] = [...verdict.note.matchAll(/(\d+)%/g)].map((m) => Number(m[1]));
+    expect(needed).toBeGreaterThan(had!);
+  });
+
+  it("grades a stack-off by the same bar the live coach would have used", () => {
+    const base = moment({
+      action: "call",
+      amount: 900,
+      toCall: 900,
+      potBefore: 1200,
+      equityPct: 52,
+      breakEvenPct: 43,
+    });
+
+    // Relative to the pot alone this is only a "heavy" bet; knowing it is the
+    // player's whole stack makes it a shove, and the bar rises accordingly.
+    expect(pressureOf({ toCall: 900, pot: 1200 }).level).toBe("heavy");
+    expect(pressureOf({ toCall: 900, pot: 1200, stack: 900 }).level).toBe("shove");
+
+    // The verdict labels are coarse enough to coincide here. The number the
+    // player reads is what must match the live coach — and it is exactly the
+    // figure a test agent caught disagreeing by seven points.
+    expect(judge(base).note).toMatch(/nearer 51% in practice/);
+    expect(judge(base, 900).note).toMatch(/nearer 58% in practice/);
   });
 });
 

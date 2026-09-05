@@ -72,16 +72,19 @@ export function reviewHand(hand: CompletedHand, seat: number, opponentsAtStart?:
         event.toCall > 0 ? event.toCall / (event.potBefore + event.toCall) : null;
 
       moments.push(
-        judge({
-          street,
-          action: event.action,
-          amount: event.amount,
-          toCall: event.toCall,
-          potBefore: event.potBefore,
-          board: [...board],
-          equityPct: equity.equity * 100,
-          breakEvenPct: breakEven === null ? null : breakEven * 100,
-        }),
+        judge(
+          {
+            street,
+            action: event.action,
+            amount: event.amount,
+            toCall: event.toCall,
+            potBefore: event.potBefore,
+            board: [...board],
+            equityPct: equity.equity * 100,
+            breakEvenPct: breakEven === null ? null : breakEven * 100,
+          },
+          event.stackBefore,
+        ),
       );
     }
 
@@ -107,12 +110,21 @@ function cardCode(card: number): string {
   return "23456789TJQKA"[card >> 2]! + "cdhs"[card & 3]!;
 }
 
-function judge(base: Omit<ReviewMoment, "verdict" | "note">): ReviewMoment {
+/**
+ * Grades one decision. Exported because this is the review's standard, and a
+ * standard is worth testing directly rather than through a played-out hand.
+ *
+ * `stackBefore` matters: the same 400-chip call is a routine bet with 4000
+ * behind and a stack-off with 500, and the live coach can tell the difference.
+ * Without it a review would grade a shove by a softer bar than the coach applied
+ * at the time — which is precisely the contradiction this module exists to stop.
+ */
+export function judge(
+  base: Omit<ReviewMoment, "verdict" | "note">,
+  stackBefore?: number,
+): ReviewMoment {
   const { action, equityPct, breakEvenPct, toCall } = base;
-  // The same standard the live coach applies, so a review never praises a call
-  // the coach would have warned about. Stacks are not in the event log, so this
-  // reads the bet size relative to the pot only.
-  const pressure = pressureOf({ toCall, pot: base.potBefore });
+  const pressure = pressureOf({ toCall, pot: base.potBefore, stack: stackBefore });
   const demanded = (breakEvenPct ?? 0) + pressure.margin * 100;
 
   if (breakEvenPct === null) {
@@ -134,17 +146,28 @@ function judge(base: Omit<ReviewMoment, "verdict" | "note">): ReviewMoment {
   const margin = equityPct - breakEvenPct;
 
   if (action === "fold") {
-    if (margin > 12 + pressure.margin * 100) {
+    // A fold is right when the equity was short of the bar. Above it the fold
+    // gave something up — by a lot, or by a little. Calling that "right" and
+    // then quoting numbers that say otherwise is how a review loses its reader.
+    const surplus = equityPct - demanded;
+    if (surplus > 12) {
       return {
         ...base,
         verdict: "tight",
-        note: `You folded for ${toCall} when the price only needed ${Math.round(breakEvenPct)}% and you had about ${Math.round(equityPct)}%. That fold gave up a profitable call.`,
+        note: `You folded for ${toCall} when you needed ${Math.round(demanded)}% and had about ${Math.round(equityPct)}%. That fold gave up a profitable call.`,
+      };
+    }
+    if (surplus > 0) {
+      return {
+        ...base,
+        verdict: "thin",
+        note: `Folding for ${toCall} was close: you had about ${Math.round(equityPct)}% against a ${Math.round(demanded)}% bar, so calling was defensible too.`,
       };
     }
     return {
       ...base,
       verdict: "good",
-      note: `Folding for ${toCall} was right: you needed ${Math.round(breakEvenPct)}% and had about ${Math.round(equityPct)}%.`,
+      note: `Folding for ${toCall} was right: you needed ${Math.round(demanded)}% and had about ${Math.round(equityPct)}%.`,
     };
   }
 

@@ -85,6 +85,12 @@ export type HandEvent =
       total: number;
       /** What the action cost to call, before it was taken. */
       toCall: number;
+      /**
+       * The seat's stack before acting. Without this a replay cannot tell a
+       * stack-off from a merely large bet, and the post-hand review would grade
+       * by a softer standard than the live coach applied at the time.
+       */
+      stackBefore: number;
       potBefore: number;
       street: Street;
     }
