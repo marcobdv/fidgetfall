@@ -653,9 +653,11 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
       const good = spare.filter((c) => c.team === 'townsfolk' || c.team === 'outsider');
       return good.length
         ? [
-            `**Not in play, so safe for the Demon to bluff:** ${good.map((c) => c.name).join(', ')}.`,
-            'Give the Demon three of these on the first night. They are the difference between a',
-            'Demon who can hold a story and one who is caught on day two.',
+            `**Not in play:** ${good.map((c) => c.name).join(', ')}.`,
+            '**Give the Demon exactly THREE of these on the first night — three, not four, not',
+            'six.** That number is a rule and it is load-bearing: three bluffs is a constraint a',
+            'good town can squeeze a Demon out of, and six makes them unfalsifiable. The list',
+            'above is the pool you choose from, not the list you hand over.',
             '',
           ]
         : [];

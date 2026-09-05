@@ -113,7 +113,12 @@ export function renderView(view: GameView): string {
     const good = view.notInPlay.filter((c) => c.team === 'townsfolk' || c.team === 'outsider');
     const evil = view.notInPlay.filter((c) => c.team === 'minion' || c.team === 'demon');
     lines.push('', 'Not in play:');
-    if (good.length) lines.push(`  good (safe Demon bluffs): ${good.map((c) => c.name).join(', ')}`);
+    // This is the POOL, not the handout. Labelling it "safe Demon bluffs" and
+    // listing ten names is how a Storyteller ends up giving a Demon six of them.
+    if (good.length) {
+      lines.push(`  good — CHOOSE EXACTLY THREE of these to give the Demon, no more:`);
+      lines.push(`    ${good.map((c) => c.name).join(', ')}`);
+    }
     if (evil.length) lines.push(`  evil: ${evil.map((c) => c.name).join(', ')}`);
   }
 
