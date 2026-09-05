@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildView } from '../src/views.js';
+import { buildView, describeEvent } from '../src/views.js';
+import { canSee } from '../src/events.js';
 import { writeChronicle } from '../src/chronicle.js';
 import { table, expectOk, expectErr } from './helpers.js';
 
@@ -136,4 +137,53 @@ test('a traveller is public: everyone sees exactly what they are', () => {
 
   // A normal player is still hidden from everyone but themselves.
   assert.equal(cal.seats.find((s) => s.name === 'Ben')?.character, undefined);
+});
+
+/**
+ * A huddle: the same private channel, aimed at a few people at once. Real tables
+ * do this constantly — "put your faith in one or two players and talk in secret
+ * with them" is the standard good opening, and the engine could not express it.
+ */
+test('a huddle reaches everyone named and nobody else', () => {
+  const t = day(['Ana', 'Ben', 'Cal', 'Dee']);
+  expectOk(
+    t.game.whisper(t.byName('Ana').id, [t.byName('Ben').id, t.byName('Cal').id], 'We three only.'),
+  );
+  const said = t.game.log.find((e) => e.type === 'chat.whisper');
+  assert.ok(said);
+  for (const who of ['Ana', 'Ben', 'Cal']) {
+    assert.equal(
+      canSee(said, { kind: 'seat', seatId: t.byName(who).id }),
+      true,
+      `${who} was in the huddle and should have heard it`,
+    );
+  }
+  assert.equal(canSee(said, { kind: 'seat', seatId: t.byName('Dee').id }), false, 'Dee heard it');
+
+  // But Dee can see that it happened, and that three of them were in it.
+  const observed = t.game.log.find((e) => e.type === 'chat.whisper.observed');
+  assert.ok(observed);
+  assert.equal(canSee(observed, { kind: 'seat', seatId: t.byName('Dee').id }), true);
+  assert.match(describeEvent(t.game, observed), /Ana pulled Ben and Cal aside together — 3 of them/);
+});
+
+test('a huddle is capped, and cannot include yourself', () => {
+  const t = day(['Ana', 'Ben', 'Cal', 'Dee', 'Eve', 'Fay']);
+  const others = ['Ben', 'Cal', 'Dee', 'Eve', 'Fay'].map((n) => t.byName(n).id);
+  assert.match(expectErr(t.game.whisper(t.byName('Ana').id, others, 'all of you')), /at most 4/);
+  assert.match(expectErr(t.game.whisper(t.byName('Ana').id, [], 'nobody')), /at least one player/);
+  assert.match(
+    expectErr(t.game.whisper(t.byName('Ana').id, [t.byName('Ana').id], 'myself')),
+    /cannot whisper to yourself/,
+  );
+});
+
+test('naming the same player twice is one seat in the huddle, not two', () => {
+  const t = day(['Ana', 'Ben', 'Cal']);
+  const ben = t.byName('Ben').id;
+  expectOk(t.game.whisper(t.byName('Ana').id, [ben, ben], 'once'));
+  const observed = t.game.log.find((e) => e.type === 'chat.whisper.observed');
+  assert.ok(observed);
+  // Two people stepped aside, not three, so it reads as an ordinary whisper.
+  assert.match(describeEvent(t.game, observed), /Ana and Ben stepped aside to talk privately/);
 });

@@ -49,6 +49,8 @@ const RECOMMENDED_MIN_PLAYERS = 5;
 const MAX_MESSAGE = 2000;
 /** A "three for three" is three. Past a handful a hedge stops being information. */
 const MAX_CLAIMED = 5;
+/** Whisper to one, or huddle with a few. Past four people it is not private. */
+const MAX_HUDDLE = 4;
 
 const defaultRestrictions = (): Restrictions => ({ whisper: true, nominate: true, vote: true });
 
@@ -403,13 +405,33 @@ export class Game {
     return ok(undefined);
   }
 
-  whisper(actorSeatId: string, targetSeatId: string, text: string): Result<void> {
+  /**
+   * A private word with one player, or with a few at once. Real tables do both:
+   * the canonical unit is two people stepping aside, but "put your faith in one or
+   * two players and talk in secret with them" is the standard opening for good, and
+   * an alliance of three that trusts each other is how a town actually gets built.
+   * The square sees who huddled and how many; it never hears a word of it.
+   */
+  whisper(actorSeatId: string, targetSeatIds: string[], text: string): Result<void> {
     const from = this.requirePlayer(actorSeatId);
     if (!from.ok) return from;
-    const to = this.requireSeat(targetSeatId);
-    if (!to.ok) return to;
-    if (to.value.isStoryteller) return err('use the Storyteller channel to talk to the Storyteller');
-    if (from.value.id === to.value.id) return err('you cannot whisper to yourself');
+
+    const unique = [...new Set(targetSeatIds)];
+    if (!unique.length) return err('name at least one player to talk to');
+    if (unique.length > MAX_HUDDLE) {
+      return err(`a huddle is at most ${MAX_HUDDLE} others — past that, just say it out loud`);
+    }
+    const targets: Seat[] = [];
+    for (const id of unique) {
+      const to = this.requireSeat(id);
+      if (!to.ok) return to;
+      if (to.value.isStoryteller) {
+        return err('use the Storyteller channel to talk to the Storyteller');
+      }
+      if (to.value.id === from.value.id) return err('you cannot whisper to yourself');
+      targets.push(to.value);
+    }
+
     const clean = this.cleanText(text);
     if (!clean.ok) return clean;
     if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
@@ -420,22 +442,23 @@ export class Game {
     // nothing else. A dead player who knows something is still the best weapon
     // the town has, and silencing them here silenced two of them for a whole game.
 
+    const ids = targets.map((t) => t.id);
     this.emit(
       'chat.whisper',
       {
         fromSeatId: from.value.id,
         fromName: from.value.name,
-        toSeatId: to.value.id,
-        toName: to.value.name,
+        toSeatIds: ids,
+        toNames: targets.map((t) => t.name),
         text: clean.value,
       },
-      toSeats(from.value.id, to.value.id),
+      toSeats(from.value.id, ...ids),
       from.value.id,
     );
-    // The town can see that two players stepped aside, but not what was said.
+    // The town can see who stepped aside together, but not what was said.
     this.emit(
       'chat.whisper.observed',
-      { fromSeatId: from.value.id, toSeatId: to.value.id },
+      { fromSeatId: from.value.id, toSeatIds: ids },
       PUBLIC,
       from.value.id,
     );

@@ -20,7 +20,7 @@ test('the dead can still whisper', () => {
   const t = table(['Ana', 'Ben', 'Cal'], { Ana: 'seer', Ben: 'wraith', Cal: 'baker' });
   expectOk(t.game.stSetPhase(t.st.id, 'day'));
   expectOk(t.game.stKill(t.st.id, t.byName('Ana').id, 'the wraith'));
-  expectOk(t.game.whisper(t.byName('Ana').id, t.byName('Cal').id, 'Do not trust Ben.'));
+  expectOk(t.game.whisper(t.byName('Ana').id, [t.byName('Cal').id], 'Do not trust Ben.'));
 });
 
 test('the dead still cannot nominate', () => {
@@ -39,7 +39,7 @@ test('a Storyteller restriction still silences a whisperer, alive or dead', () =
   expectOk(t.game.stSetPhase(t.st.id, 'day'));
   expectOk(t.game.stSetRestriction(t.st.id, t.byName('Ana').id, 'whisper', false));
   assert.match(
-    expectErr(t.game.whisper(t.byName('Ana').id, t.byName('Cal').id, 'psst')),
+    expectErr(t.game.whisper(t.byName('Ana').id, [t.byName('Cal').id], 'psst')),
     /cannot whisper/,
   );
 });

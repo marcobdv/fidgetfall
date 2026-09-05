@@ -79,7 +79,7 @@ describe('chat', () => {
   it('keeps whispers between the two players (and the storyteller)', () => {
     const t = table(['Ana', 'Ben', 'Cal']);
     expectOk(t.game.stAdvancePhase(t.st.id)); // day
-    expectOk(t.game.whisper(t.byName('Ana').id, t.byName('Ben').id, 'I am the Seer'));
+    expectOk(t.game.whisper(t.byName('Ana').id, [t.byName('Ben').id], 'I am the Seer'));
     const whisper = t.game.log.find((e) => e.type === 'chat.whisper');
     assert.ok(whisper);
     assert.equal(canSee(whisper, { kind: 'seat', seatId: t.byName('Ana').id }), true);
@@ -96,14 +96,14 @@ describe('chat', () => {
 
   it('does not allow whispering at night', () => {
     const t = table(['Ana', 'Ben', 'Cal']);
-    assert.match(expectErr(t.game.whisper(t.byName('Ana').id, t.byName('Ben').id, 'psst')), /during the day/);
+    assert.match(expectErr(t.game.whisper(t.byName('Ana').id, [t.byName('Ben').id], 'psst')), /during the day/);
   });
 
   it('honours a storyteller-imposed whisper restriction', () => {
     const t = table(['Ana', 'Ben', 'Cal']);
     expectOk(t.game.stAdvancePhase(t.st.id));
     expectOk(t.game.stSetRestriction(t.st.id, t.byName('Ana').id, 'whisper', false));
-    assert.match(expectErr(t.game.whisper(t.byName('Ana').id, t.byName('Ben').id, 'psst')), /cannot whisper/);
+    assert.match(expectErr(t.game.whisper(t.byName('Ana').id, [t.byName('Ben').id], 'psst')), /cannot whisper/);
   });
 
   it('keeps storyteller info private to its recipient', () => {

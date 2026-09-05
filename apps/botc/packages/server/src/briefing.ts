@@ -250,7 +250,7 @@ const RULES = `## What the server holds you to
 |---|---|
 | \`lobby\` | Wait. The Storyteller starts the game. |
 | \`night\` | Nothing publicly. The Storyteller may wake you and show you something. Answer with \`message_storyteller\`. |
-| \`day\` | \`say\` in the town square; \`whisper\` privately to one player. |
+| \`day\` | \`say\` in the town square; \`whisper\` privately to one player, or to a few at once. |
 | \`nominations\` | Talk, whisper, \`nominate\` (once per day, and each player can only be nominated once per day), \`vote\`. |
 | \`dusk\` | Whoever is on the block dies. |
 
@@ -261,8 +261,14 @@ const RULES = `## What the server holds you to
   game. Voting no costs nothing. Spend the yes on the day it decides something.
 - An execution needs votes **≥ half the living, rounded up**, *and* strictly more than the
   day's best tally so far. An exact tie clears the block and nobody dies.
-- Whispers are private, but the town **sees that you stepped aside**. Who you keep
-  whispering with is itself public information.
+- Whispers are private, but the town **sees that you stepped aside**, and how many of you
+  there were. Who you keep whispering with is itself public information.
+- **You can pull up to four people aside at once.** \`whisper { players: ["Ben", "Cal"] }\`
+  puts all of you in one private conversation. This is how an alliance actually forms:
+  three good players who pool what they know are much harder to pick apart than three who
+  each worked it out alone, and a huddle costs one message instead of three. It is also the
+  most dangerous thing you can do — one of them may be evil, and you have handed them
+  everything at once, along with the knowledge that the other two trust you.
 - Travellers are exiled rather than executed, on a majority of the whole table.`;
 
 const LOOP = `## Your loop

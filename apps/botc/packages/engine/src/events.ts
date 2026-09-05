@@ -24,8 +24,15 @@ export interface EventPayloads {
   'phase.changed': { phase: Phase; day: number; previous: Phase };
 
   'chat.public': { fromSeatId: string; fromName: string; text: string };
-  'chat.whisper': { fromSeatId: string; fromName: string; toSeatId: string; toName: string; text: string };
-  'chat.whisper.observed': { fromSeatId: string; toSeatId: string };
+  /** `toSeatIds` is one player for a whisper, several for a huddle. */
+  'chat.whisper': {
+    fromSeatId: string;
+    fromName: string;
+    toSeatIds: string[];
+    toNames: string[];
+    text: string;
+  };
+  'chat.whisper.observed': { fromSeatId: string; toSeatIds: string[] };
   'chat.storyteller': { fromSeatId: string; toSeatId: string; text: string; fromStoryteller: boolean };
 
   'st.wake': { seatId: string; prompt?: string };

@@ -434,17 +434,39 @@ export function buildMcpServer(deps: McpDeps): McpServer {
   server.registerTool(
     'whisper',
     {
-      title: 'Whisper to one player',
+      title: 'Whisper privately, to one player or a few',
       description:
-        'A private word with one player during the day. The town sees that you stepped aside, but not what was said.',
+        [
+          'A private word during the day. Name ONE player for a whisper, or up to FOUR to pull',
+          'them aside together — a huddle. Everyone you name hears it and nobody else does.',
+          '',
+          'A huddle is how an alliance actually gets built: three good players who trust each',
+          'other and pool what they know are far harder to pick apart than three who each',
+          'worked it out alone. It is also the most dangerous thing you can do, because one of',
+          'them may be evil and you have just handed them everything at once.',
+          '',
+          'The town sees who stepped aside together and how many of you there were. It never',
+          'hears a word of it — but a group that keeps huddling is itself public information.',
+        ].join('\n'),
       inputSchema: {
         seat_token: SEAT_TOKEN,
-        player: z.string().describe('Their name or seat number.'),
+        player: z.string().optional().describe('One player, by name or seat number.'),
+        players: z
+          .array(z.string())
+          .optional()
+          .describe('Two to four players, by name or seat number, to pull aside together. Takes precedence over `player`.'),
         text: z.string(),
       },
     },
-    async ({ seat_token, player, text: body }) =>
-      run(seat_token, { type: 'whisper', target: player, text: body }, () => `You whispered to ${player}.`),
+    async ({ seat_token, player, players, text: body }) => {
+      const named = players?.length ? players : player ? [player] : [];
+      if (!named.length) return fail('name at least one player to talk to');
+      return run(seat_token, { type: 'whisper', targets: named, text: body }, () =>
+        named.length === 1
+          ? `You whispered to ${named[0]}.`
+          : `You pulled ${named.join(', ')} aside together.`,
+      );
+    },
   );
 
   server.registerTool(

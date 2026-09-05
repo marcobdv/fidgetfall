@@ -129,8 +129,9 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
         current.said.push({ name: String(d['fromName']), text: String(d['text']) });
         break;
       case 'chat.whisper.observed': {
-        const pair = [name(d['fromSeatId']), name(d['toSeatId'])].sort().join(' & ');
-        current.whispers.set(pair, (current.whispers.get(pair) ?? 0) + 1);
+        const ids = (d['toSeatIds'] as string[]) ?? [];
+        const group = [name(d['fromSeatId']), ...ids.map((id) => name(id))].sort().join(' & ');
+        current.whispers.set(group, (current.whispers.get(group) ?? 0) + 1);
         break;
       }
       case 'st.info':

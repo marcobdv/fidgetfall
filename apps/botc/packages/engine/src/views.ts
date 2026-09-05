@@ -325,10 +325,19 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return `Phase: ${d['phase']} (day ${d['day']}).`;
     case 'chat.public':
       return `[town] ${d['fromName']}: ${d['text']}`;
-    case 'chat.whisper':
-      return `[whisper ${d['fromName']} -> ${d['toName']}] ${d['text']}`;
-    case 'chat.whisper.observed':
-      return `${name(d['fromSeatId'] as string)} and ${name(d['toSeatId'] as string)} stepped aside to talk privately.`;
+    case 'chat.whisper': {
+      const to = (d['toNames'] as string[]) ?? [];
+      return `[whisper ${d['fromName']} -> ${to.join(', ')}] ${d['text']}`;
+    }
+    case 'chat.whisper.observed': {
+      const who = ((d['toSeatIds'] as string[]) ?? []).map((id) => name(id));
+      const from = name(d['fromSeatId'] as string);
+      if (who.length <= 1) {
+        return `${from} and ${who[0] ?? 'someone'} stepped aside to talk privately.`;
+      }
+      const last = who[who.length - 1];
+      return `${from} pulled ${who.slice(0, -1).join(', ')} and ${last} aside together — ${who.length + 1} of them, out of earshot.`;
+    }
     case 'chat.storyteller':
       return d['fromStoryteller']
         ? `[storyteller] ${d['text']}`

@@ -9,7 +9,7 @@ import type { Room } from './rooms.js';
  */
 export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('say'), text: z.string() }),
-  z.object({ type: z.literal('whisper'), target: z.string(), text: z.string() }),
+  z.object({ type: z.literal('whisper'), targets: z.array(z.string()).min(1), text: z.string() }),
   z.object({ type: z.literal('message_storyteller'), text: z.string() }),
   z.object({ type: z.literal('nominate'), target: z.string() }),
   z.object({ type: z.literal('vote'), vote: z.boolean() }),
@@ -114,9 +114,15 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
     case 'say':
       return game.sayPublic(seatId, command.text);
     case 'whisper': {
-      const to = target(room, command.target);
-      return to.ok ? game.whisper(seatId, to.value.id, command.text) : to;
+      const ids: string[] = [];
+      for (const name of command.targets) {
+        const to = target(room, name);
+        if (!to.ok) return to;
+        ids.push(to.value.id);
+      }
+      return game.whisper(seatId, ids, command.text);
     }
+
     case 'message_storyteller':
       return game.messageStoryteller(seatId, command.text);
     case 'nominate': {
