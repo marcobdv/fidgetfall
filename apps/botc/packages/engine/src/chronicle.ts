@@ -180,9 +180,15 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
       case 'st.info':
         wokenEntry(current, game, String(d['seatId'])).told.push(String(d['text']));
         break;
-      case 'st.wake':
-        wokenEntry(current, game, String(d['seatId'])).wakes += 1;
+      case 'st.wake': {
+        // A wake carries a prompt, and the prompt is usually the whole substance of
+        // the waking — "your demon is X, your fellow minion is Y". Counting the wake
+        // and throwing the words away rendered every one of them as "shown nothing".
+        const entry = wokenEntry(current, game, String(d['seatId']));
+        entry.wakes += 1;
+        if (d['prompt']) entry.told.push(String(d['prompt']));
         break;
+      }
       case 'st.record':
         current.records.push(String(d['text']));
         break;

@@ -140,3 +140,12 @@ test('the Storyteller chronicle carries the private conversations; a bystander s
   const cal = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id }, { reveal: true });
   assert.ok(!cal.includes('bluffing the Baker'), 'Cal was not in that conversation');
 });
+
+test('a wake keeps its prompt in the chronicle, not just a tally', () => {
+  const t = table(['Ana', 'Ben', 'Cal']);
+  expectOk(t.game.stWake(t.st.id, t.byName('Ana').id, 'Your demon is Ben. Your fellow minion is Cal.'));
+  expectOk(t.game.stEndGame(t.st.id, 'evil', 'done'));
+  const own = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Ana').id }, { reveal: true });
+  assert.match(own, /Your demon is Ben\. Your fellow minion is Cal\./);
+  assert.ok(!own.includes('shown nothing'), 'a wake with a prompt is not nothing');
+});
