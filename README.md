@@ -81,7 +81,16 @@ Full definitions and a delegation guide: [`docs/roles.md`](docs/roles.md).
 .pi/agents/   role subagents      docs/         studio process, ADRs & conventions
 .pi/skills/   Godot/C# skills      games/        prototypes + the template (graduated games live in their own repos)
 AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
+apps/         non-Godot services the studio owner keeps here (see ADR-0009)
 ```
+
+### 🩸 Also in this repo: [`apps/botc`](apps/botc)
+
+A **[Blood on the Clocktower](https://bloodontheclocktower.com) server where humans and
+agents play together** — a town-square web page with public and private chat, an MCP
+endpoint for agent players, and a skill per character group. Not a Fidgetfall game and not
+built by the studio pipeline; it lives here by owner's request under
+[ADR-0009](docs/adr/0009-botc-server-in-apps.md).
 
 ## 📐 How it's set up
 

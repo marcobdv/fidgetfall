@@ -129,10 +129,17 @@ fidgetfall/
 │   ├── architecture.md       # how the harness/orchestration is wired
 │   ├── orchestration-playbook.md  # the reusable wave pipeline
 │   └── adr/                  # Architecture Decision Records (the "why")
-└── games/                    # prototypes + the template (sample-clockwork)
-    ├── README.md             # portfolio index (links to graduated game repos)
-    └── <game-slug>/          # a self-contained Godot C# project (until greenlit)
+├── games/                    # prototypes + the template (sample-clockwork)
+│   ├── README.md             # portfolio index (links to graduated game repos)
+│   └── <game-slug>/          # a self-contained Godot C# project (until greenlit)
+└── apps/                     # non-Godot services kept here by the owner (ADR-0009)
+    └── botc/                 # Blood on the Clocktower server for humans + agents
 ```
+
+**`apps/` is not the studio's work.** Projects there use their own toolchain (`apps/botc`
+is Node/TypeScript) and none of the roles, skills, or conventions in this handbook apply
+to them. Read the project's own README before touching one, and do not copy its
+conventions into a game.
 
 **Architecture & decisions:** harness wiring is in `docs/architecture.md`, the reusable
 production recipe in `docs/orchestration-playbook.md`, and the *why* behind non-obvious

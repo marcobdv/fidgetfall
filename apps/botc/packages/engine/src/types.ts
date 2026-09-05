@@ -1,0 +1,129 @@
+/** Domain types for the Blood on the Clocktower engine. */
+
+export type Team = 'townsfolk' | 'outsider' | 'minion' | 'demon' | 'traveller' | 'fabled';
+export type Alignment = 'good' | 'evil';
+export type SeatKind = 'human' | 'agent';
+
+/**
+ * Phases follow a real game: night, then the day's open discussion, then
+ * nominations, then dusk (when the execution resolves) and back to night.
+ */
+export type Phase = 'lobby' | 'night' | 'day' | 'nominations' | 'dusk' | 'over';
+
+export const PHASE_CYCLE: Phase[] = ['night', 'day', 'nominations', 'dusk'];
+
+/** A character as the script-tool JSON describes it. Only `id`/`name`/`team` are required. */
+export interface Character {
+  id: string;
+  name: string;
+  team: Team;
+  /** Absent for the base editions — see data/README.md. */
+  ability?: string;
+  firstNight?: number;
+  firstNightReminder?: string;
+  otherNight?: number;
+  otherNightReminder?: string;
+  reminders?: string[];
+  setup?: boolean;
+  /** True when a script referenced this id but the character index had no entry for it. */
+  unresolved?: boolean;
+}
+
+export interface GameScript {
+  id: string;
+  name: string;
+  author?: string;
+  description?: string;
+  edition?: string;
+  characters: Character[];
+}
+
+/** A Storyteller-placed reminder token, visible only in the grimoire. */
+export interface ReminderToken {
+  id: string;
+  label: string;
+  sourceCharacterId?: string;
+}
+
+/** What the Storyteller has taken away from a seat (homebrew abilities, Butler, ...). */
+export interface Restrictions {
+  whisper: boolean;
+  nominate: boolean;
+  vote: boolean;
+}
+
+export interface Seat {
+  id: string;
+  /** Stable order around the town square; the Storyteller is not in the circle. */
+  index: number;
+  name: string;
+  kind: SeatKind;
+  isStoryteller: boolean;
+  isTraveller: boolean;
+  alive: boolean;
+  /** A dead player keeps one vote token until they spend it. */
+  ghostVote: boolean;
+  connected: boolean;
+  /** Grimoire data: only the Storyteller and the seat's owner ever see these. */
+  characterId?: string;
+  alignment?: Alignment;
+  reminders: ReminderToken[];
+  hasNominatedToday: boolean;
+  hasBeenNominatedToday: boolean;
+  restrictions: Restrictions;
+}
+
+export type NominationKind = 'execution' | 'exile';
+
+export type NominationResult =
+  | 'on-block'
+  | 'insufficient'
+  | 'tied'
+  | 'exiled'
+  | 'not-exiled';
+
+export interface Vote {
+  seatId: string;
+  vote: boolean;
+  /** True when the voter was dead and spent their ghost vote. */
+  ghost: boolean;
+  at: number;
+}
+
+export interface Nomination {
+  id: string;
+  day: number;
+  kind: NominationKind;
+  nominatorSeatId: string;
+  nomineeSeatId: string;
+  open: boolean;
+  votes: Vote[];
+  tally?: number;
+  threshold?: number;
+  result?: NominationResult;
+}
+
+export interface GameState {
+  id: string;
+  name: string;
+  joinCode: string;
+  createdAt: number;
+  phase: Phase;
+  /** 1-based; night 1 and the day that follows it are both day 1. */
+  day: number;
+  script: GameScript;
+  seats: Seat[];
+  storytellerSeatId: string;
+  nominations: Nomination[];
+  activeNominationId?: string;
+  /** Who is currently condemned to die at dusk, and the tally that put them there. */
+  onBlockSeatId?: string;
+  highestTally: number;
+  winner?: Alignment;
+  endedReason?: string;
+}
+
+export type Result<T = void> = { ok: true; value: T } | { ok: false; error: string };
+
+export const ok = <T>(value: T): Result<T> => ({ ok: true, value });
+export const err = (error: string): Result<never> => ({ ok: false, error });

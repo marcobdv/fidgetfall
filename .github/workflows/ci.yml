@@ -35,3 +35,20 @@ jobs:
         run: godot --headless --path . --quit-after 90
       - name: Test (GdUnit4, headless)
         run: dotnet test test/
+
+  botc:
+    # apps/botc is a standalone Node service (ADR-0009), not part of the Godot
+    # pipeline above. Its own tests cover the engine and a full end-to-end game.
+    name: apps/botc
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/botc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm run build
+      - run: npm test

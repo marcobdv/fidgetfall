@@ -1,0 +1,886 @@
+import {
+  PUBLIC,
+  ST_ONLY,
+  toSeats,
+  type AnyEvent,
+  type EventPayloads,
+  type EventType,
+  type GameEvent,
+  type Viewer,
+  type Visibility,
+  canSee,
+} from './events.js';
+import { nightOrder } from './scripts.js';
+import {
+  PHASE_CYCLE,
+  err,
+  ok,
+  type Alignment,
+  type Character,
+  type GameScript,
+  type GameState,
+  type Nomination,
+  type Phase,
+  type Restrictions,
+  type Result,
+  type Seat,
+  type SeatKind,
+} from './types.js';
+
+export interface GameOptions {
+  id: string;
+  name: string;
+  joinCode: string;
+  script: GameScript;
+  storytellerName: string;
+  storytellerKind?: SeatKind;
+  /** Injected so tests are deterministic. */
+  now?: () => number;
+  makeId?: (prefix: string) => string;
+}
+
+const MIN_PLAYERS = 3;
+const RECOMMENDED_MIN_PLAYERS = 5;
+const MAX_MESSAGE = 2000;
+
+const defaultRestrictions = (): Restrictions => ({ whisper: true, nominate: true, vote: true });
+
+/**
+ * The authoritative game. Pure: it owns state and rules but performs no I/O, so
+ * the WebSocket server, the MCP server, and the tests all drive the same object.
+ *
+ * Abilities are *not* automated. The engine runs the town — seating, phases,
+ * chat, nominations, votes, deaths, the grimoire — and the Storyteller rules on
+ * what characters actually do, exactly as at a physical table.
+ */
+export class Game {
+  readonly state: GameState;
+  readonly log: AnyEvent[] = [];
+
+  private readonly now: () => number;
+  private readonly makeId: (prefix: string) => string;
+  private counter = 0;
+
+  constructor(options: GameOptions) {
+    this.now = options.now ?? (() => Date.now());
+    this.makeId =
+      options.makeId ??
+      ((prefix: string) => `${prefix}_${(++this.counter).toString(36)}${Math.random().toString(36).slice(2, 8)}`);
+
+    const storyteller: Seat = {
+      id: this.makeId('seat'),
+      index: -1,
+      name: options.storytellerName,
+      kind: options.storytellerKind ?? 'human',
+      isStoryteller: true,
+      isTraveller: false,
+      alive: true,
+      ghostVote: false,
+      connected: false,
+      reminders: [],
+      hasNominatedToday: false,
+      hasBeenNominatedToday: false,
+      restrictions: defaultRestrictions(),
+    };
+
+    this.state = {
+      id: options.id,
+      name: options.name,
+      joinCode: options.joinCode,
+      createdAt: this.now(),
+      phase: 'lobby',
+      day: 0,
+      script: options.script,
+      seats: [storyteller],
+      storytellerSeatId: storyteller.id,
+      nominations: [],
+      highestTally: 0,
+    };
+
+    this.emit(
+      'game.created',
+      { name: options.name, scriptId: options.script.id, scriptName: options.script.name },
+      PUBLIC,
+    );
+  }
+
+  // ---------------------------------------------------------------- helpers
+
+  private emit<T extends EventType>(
+    type: T,
+    data: EventPayloads[T],
+    visibility: Visibility,
+    actorSeatId?: string,
+  ): GameEvent<T> {
+    const event = {
+      seq: this.log.length + 1,
+      at: this.now(),
+      type,
+      data,
+      visibility,
+      ...(actorSeatId ? { actorSeatId } : {}),
+    } as GameEvent<T>;
+    this.log.push(event as AnyEvent);
+    return event;
+  }
+
+  seat(seatId: string | undefined): Seat | undefined {
+    if (!seatId) return undefined;
+    return this.state.seats.find((s) => s.id === seatId);
+  }
+
+  /** Everyone in the circle: the Storyteller is not a player. */
+  players(): Seat[] {
+    return this.state.seats.filter((s) => !s.isStoryteller).sort((a, b) => a.index - b.index);
+  }
+
+  alivePlayers(): Seat[] {
+    return this.players().filter((s) => s.alive);
+  }
+
+  get storyteller(): Seat {
+    const seat = this.seat(this.state.storytellerSeatId);
+    if (!seat) throw new Error('game has no storyteller seat');
+    return seat;
+  }
+
+  character(characterId: string | undefined): Character | undefined {
+    if (!characterId) return undefined;
+    return this.state.script.characters.find((c) => c.id === characterId);
+  }
+
+  nightOrder(): Character[] {
+    return nightOrder(this.state.script, this.state.day <= 1);
+  }
+
+  activeNomination(): Nomination | undefined {
+    return this.state.nominations.find((n) => n.id === this.state.activeNominationId);
+  }
+
+  eventsSince(seq: number, viewer: Viewer): AnyEvent[] {
+    return this.log.filter((event) => event.seq > seq && canSee(event, viewer));
+  }
+
+  private requireSeat(seatId: string): Result<Seat> {
+    const seat = this.seat(seatId);
+    return seat ? ok(seat) : err('no such seat');
+  }
+
+  private requireStoryteller(seatId: string): Result<Seat> {
+    const seat = this.seat(seatId);
+    if (!seat) return err('no such seat');
+    if (!seat.isStoryteller) return err('only the Storyteller can do that');
+    return ok(seat);
+  }
+
+  private requirePlayer(seatId: string): Result<Seat> {
+    const seat = this.seat(seatId);
+    if (!seat) return err('no such seat');
+    if (seat.isStoryteller) return err('the Storyteller is not a player');
+    return ok(seat);
+  }
+
+  private cleanText(text: string): Result<string> {
+    const trimmed = text.trim();
+    if (!trimmed) return err('message is empty');
+    if (trimmed.length > MAX_MESSAGE) return err(`message is longer than ${MAX_MESSAGE} characters`);
+    return ok(trimmed);
+  }
+
+  // ------------------------------------------------------------ seating
+
+  join(name: string, kind: SeatKind): Result<Seat> {
+    const clean = name.trim();
+    if (!clean) return err('a name is required');
+    if (clean.length > 40) return err('name is too long');
+    if (this.state.seats.some((s) => s.name.toLowerCase() === clean.toLowerCase())) {
+      return err(`the name "${clean}" is already taken in this game`);
+    }
+    if (this.state.phase === 'over') return err('this game is over');
+
+    const seat: Seat = {
+      id: this.makeId('seat'),
+      index: this.players().length,
+      name: clean,
+      kind,
+      isStoryteller: false,
+      isTraveller: this.state.phase !== 'lobby',
+      alive: true,
+      ghostVote: true,
+      connected: true,
+      reminders: [],
+      hasNominatedToday: false,
+      hasBeenNominatedToday: false,
+      restrictions: defaultRestrictions(),
+    };
+    this.state.seats.push(seat);
+    this.emit(
+      'player.joined',
+      { seatId: seat.id, name: seat.name, kind: seat.kind, isStoryteller: false },
+      PUBLIC,
+      seat.id,
+    );
+    if (seat.isTraveller) {
+      this.emit(
+        'system.notice',
+        { text: `${seat.name} joined mid-game and is seated as a Traveller.` },
+        PUBLIC,
+      );
+    }
+    return ok(seat);
+  }
+
+  /** A seat the Storyteller claims — used when the Storyteller reconnects. */
+  claimStoryteller(kind: SeatKind): Seat {
+    const seat = this.storyteller;
+    seat.kind = kind;
+    return seat;
+  }
+
+  leave(seatId: string): Result<void> {
+    const found = this.requireSeat(seatId);
+    if (!found.ok) return found;
+    const seat = found.value;
+    if (seat.isStoryteller) return err('the Storyteller cannot leave; end the game instead');
+    if (this.state.phase !== 'lobby') {
+      // Mid-game departures keep the seat so the grimoire stays intact.
+      seat.connected = false;
+      this.emit('player.connection', { seatId: seat.id, connected: false }, PUBLIC);
+      return ok(undefined);
+    }
+    this.state.seats = this.state.seats.filter((s) => s.id !== seatId);
+    this.players().forEach((s, i) => (s.index = i));
+    this.emit('player.left', { seatId: seat.id, name: seat.name }, PUBLIC);
+    return ok(undefined);
+  }
+
+  setConnected(seatId: string, connected: boolean): Result<void> {
+    const found = this.requireSeat(seatId);
+    if (!found.ok) return found;
+    if (found.value.connected === connected) return ok(undefined);
+    found.value.connected = connected;
+    this.emit('player.connection', { seatId, connected }, PUBLIC);
+    return ok(undefined);
+  }
+
+  stMoveSeat(actorSeatId: string, seatId: string, toIndex: number): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const players = this.players();
+    const current = players.findIndex((s) => s.id === seatId);
+    if (current < 0) return err('no such player');
+    const target = Math.max(0, Math.min(players.length - 1, Math.trunc(toIndex)));
+    const [moved] = players.splice(current, 1);
+    if (!moved) return err('no such player');
+    players.splice(target, 0, moved);
+    players.forEach((s, i) => (s.index = i));
+    this.emit('seating.changed', { order: players.map((s) => s.id) }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  // ------------------------------------------------------------ lifecycle
+
+  stStart(actorSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (this.state.phase !== 'lobby') return err('the game has already started');
+    const players = this.players();
+    if (players.length < MIN_PLAYERS) return err(`need at least ${MIN_PLAYERS} players to start`);
+
+    this.state.phase = 'night';
+    this.state.day = 1;
+    this.resetDay();
+    this.emit('game.started', { day: 1, seats: players.length }, PUBLIC, actorSeatId);
+    this.emit('phase.changed', { phase: 'night', day: 1, previous: 'lobby' }, PUBLIC, actorSeatId);
+    if (players.length < RECOMMENDED_MIN_PLAYERS) {
+      this.emit(
+        'system.notice',
+        { text: `Started with ${players.length} players; the game is designed for ${RECOMMENDED_MIN_PLAYERS}+.` },
+        ST_ONLY,
+      );
+    }
+    return ok(undefined);
+  }
+
+  /** Step to the next phase in the night -> day -> nominations -> dusk cycle. */
+  stAdvancePhase(actorSeatId: string): Result<Phase> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (this.state.phase === 'lobby') return err('start the game first');
+    if (this.state.phase === 'over') return err('this game is over');
+
+    const index = PHASE_CYCLE.indexOf(this.state.phase);
+    const next = PHASE_CYCLE[(index + 1) % PHASE_CYCLE.length];
+    if (!next) return err('cannot determine the next phase');
+    return this.stSetPhase(actorSeatId, next);
+  }
+
+  stSetPhase(actorSeatId: string, next: Phase): Result<Phase> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (next === 'lobby') return err('cannot return to the lobby');
+    if (next === 'over') return err('use end_game to finish the game');
+    if (this.state.phase === 'over') return err('this game is over');
+    if (this.state.phase === 'lobby') return err('start the game first');
+
+    const previous = this.state.phase;
+    // Close any nomination still on the floor first: it may put someone on the block.
+    if (this.activeNomination()) this.closeNominationInternal(actorSeatId);
+    if (previous === 'nominations' && next === 'dusk') this.resolveExecution(actorSeatId);
+
+    if (next === 'night' && previous !== 'night') {
+      this.state.day += 1;
+      this.resetDay();
+    }
+    this.state.phase = next;
+    this.emit('phase.changed', { phase: next, day: this.state.day, previous }, PUBLIC, actorSeatId);
+    return ok(next);
+  }
+
+  stEndGame(actorSeatId: string, winner: Alignment, reason: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (this.state.phase === 'over') return err('this game is already over');
+    this.state.phase = 'over';
+    this.state.winner = winner;
+    this.state.endedReason = reason;
+    this.emit('game.ended', { winner, reason }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  private resetDay(): void {
+    for (const seat of this.state.seats) {
+      seat.hasNominatedToday = false;
+      seat.hasBeenNominatedToday = false;
+    }
+    this.state.onBlockSeatId = undefined;
+    this.state.highestTally = 0;
+  }
+
+  // ------------------------------------------------------------ chat
+
+  sayPublic(actorSeatId: string, text: string): Result<void> {
+    const found = this.requireSeat(actorSeatId);
+    if (!found.ok) return found;
+    const seat = found.value;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+
+    if (!seat.isStoryteller) {
+      if (this.state.phase === 'night') return err('the town square is silent at night');
+      if (this.state.phase === 'over') return err('this game is over');
+      if (!seat.alive) return err('the dead do not speak in the town square');
+    }
+    this.emit(
+      'chat.public',
+      { fromSeatId: seat.id, fromName: seat.name, text: clean.value },
+      PUBLIC,
+      seat.id,
+    );
+    return ok(undefined);
+  }
+
+  whisper(actorSeatId: string, targetSeatId: string, text: string): Result<void> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    const to = this.requireSeat(targetSeatId);
+    if (!to.ok) return to;
+    if (to.value.isStoryteller) return err('use the Storyteller channel to talk to the Storyteller');
+    if (from.value.id === to.value.id) return err('you cannot whisper to yourself');
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
+      return err('private conversations only happen during the day');
+    }
+    if (!from.value.restrictions.whisper) return err('you cannot whisper');
+    if (!from.value.alive) return err('the dead cannot whisper');
+
+    this.emit(
+      'chat.whisper',
+      {
+        fromSeatId: from.value.id,
+        fromName: from.value.name,
+        toSeatId: to.value.id,
+        toName: to.value.name,
+        text: clean.value,
+      },
+      toSeats(from.value.id, to.value.id),
+      from.value.id,
+    );
+    // The town can see that two players stepped aside, but not what was said.
+    this.emit(
+      'chat.whisper.observed',
+      { fromSeatId: from.value.id, toSeatId: to.value.id },
+      PUBLIC,
+      from.value.id,
+    );
+    return ok(undefined);
+  }
+
+  /** A player's private line to the Storyteller (and the Storyteller's reply). */
+  messageStoryteller(actorSeatId: string, text: string): Result<void> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    this.emit(
+      'chat.storyteller',
+      {
+        fromSeatId: from.value.id,
+        toSeatId: this.state.storytellerSeatId,
+        text: clean.value,
+        fromStoryteller: false,
+      },
+      toSeats(from.value.id),
+      from.value.id,
+    );
+    return ok(undefined);
+  }
+
+  stMessage(actorSeatId: string, targetSeatId: string, text: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    this.emit(
+      'chat.storyteller',
+      { fromSeatId: st.value.id, toSeatId: to.value.id, text: clean.value, fromStoryteller: true },
+      toSeats(to.value.id),
+      st.value.id,
+    );
+    return ok(undefined);
+  }
+
+  stAnnounce(actorSeatId: string, text: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    this.emit('system.notice', { text: clean.value }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  // ------------------------------------------------------------ night
+
+  stWake(actorSeatId: string, targetSeatId: string, prompt?: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    this.emit(
+      'st.wake',
+      { seatId: to.value.id, ...(prompt ? { prompt } : {}) },
+      toSeats(to.value.id),
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  stSleep(actorSeatId: string, targetSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    this.emit('st.sleep', { seatId: to.value.id }, toSeats(to.value.id), actorSeatId);
+    return ok(undefined);
+  }
+
+  /** Give a player information. This is how every ability result reaches a player. */
+  stInfo(actorSeatId: string, targetSeatId: string, text: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    this.emit('st.info', { seatId: to.value.id, text: clean.value }, toSeats(to.value.id), actorSeatId);
+    return ok(undefined);
+  }
+
+  // ------------------------------------------------------------ grimoire
+
+  stAssignCharacter(
+    actorSeatId: string,
+    targetSeatId: string,
+    characterId: string,
+    alignment?: Alignment,
+  ): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    const character = this.character(characterId);
+    if (!character) return err(`"${characterId}" is not on this script`);
+
+    to.value.characterId = character.id;
+    to.value.alignment =
+      alignment ?? (character.team === 'minion' || character.team === 'demon' ? 'evil' : 'good');
+    if (character.team === 'traveller') to.value.isTraveller = true;
+
+    this.emit(
+      'player.character',
+      {
+        seatId: to.value.id,
+        characterId: character.id,
+        characterName: character.name,
+        team: character.team,
+      },
+      toSeats(to.value.id),
+      actorSeatId,
+    );
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `${to.value.name} is the ${character.name} (${to.value.alignment})` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  stSetAlignment(actorSeatId: string, targetSeatId: string, alignment: Alignment): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    to.value.alignment = alignment;
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `${to.value.name} is now ${alignment}` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  stAddReminder(
+    actorSeatId: string,
+    targetSeatId: string,
+    label: string,
+    sourceCharacterId?: string,
+  ): Result<string> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    const clean = this.cleanText(label);
+    if (!clean.ok) return clean;
+    const id = this.makeId('rem');
+    to.value.reminders.push({
+      id,
+      label: clean.value,
+      ...(sourceCharacterId ? { sourceCharacterId } : {}),
+    });
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `reminder "${clean.value}" on ${to.value.name}` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(id);
+  }
+
+  stRemoveReminder(actorSeatId: string, targetSeatId: string, reminderId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    const before = to.value.reminders.length;
+    to.value.reminders = to.value.reminders.filter((r) => r.id !== reminderId);
+    if (to.value.reminders.length === before) return err('no such reminder');
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `reminder removed from ${to.value.name}` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  stSetRestriction(
+    actorSeatId: string,
+    targetSeatId: string,
+    key: keyof Restrictions,
+    allowed: boolean,
+  ): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    to.value.restrictions[key] = allowed;
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `${to.value.name} ${allowed ? 'may' : 'may not'} ${key}` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  stSetTraveller(actorSeatId: string, targetSeatId: string, isTraveller: boolean): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    to.value.isTraveller = isTraveller;
+    this.emit(
+      'system.notice',
+      { text: `${to.value.name} is ${isTraveller ? 'now' : 'no longer'} a Traveller.` },
+      PUBLIC,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  stSetGhostVote(actorSeatId: string, targetSeatId: string, available: boolean): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    to.value.ghostVote = available;
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `${to.value.name} ${available ? 'has' : 'has spent'} their ghost vote` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  // ------------------------------------------------------------ life & death
+
+  stKill(actorSeatId: string, targetSeatId: string, cause = 'the Storyteller'): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    if (!to.value.alive) return err(`${to.value.name} is already dead`);
+    this.kill(to.value, cause, actorSeatId);
+    return ok(undefined);
+  }
+
+  stRevive(actorSeatId: string, targetSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    if (to.value.alive) return err(`${to.value.name} is alive`);
+    to.value.alive = true;
+    this.emit('player.revived', { seatId: to.value.id, name: to.value.name }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  private kill(seat: Seat, cause: string, actorSeatId?: string): void {
+    seat.alive = false;
+    this.emit('player.died', { seatId: seat.id, name: seat.name, cause }, PUBLIC, actorSeatId);
+    this.checkWinConditions();
+  }
+
+  /**
+   * The engine never ends the game on its own — it tells the Storyteller when a
+   * win condition looks met and lets them rule on it.
+   */
+  private checkWinConditions(): void {
+    if (this.state.phase === 'over' || this.state.phase === 'lobby') return;
+    const players = this.players().filter((s) => !s.isTraveller);
+    const assigned = players.filter((s) => s.characterId);
+    const demons = assigned.filter((s) => this.character(s.characterId)?.team === 'demon');
+
+    if (demons.length > 0 && demons.every((s) => !s.alive)) {
+      this.emit(
+        'system.notice',
+        { text: 'No living Demon remains — good may have won. Call it if you agree.' },
+        ST_ONLY,
+      );
+    }
+    const alive = players.filter((s) => s.alive);
+    if (alive.length <= 2 && alive.some((s) => s.alignment === 'evil')) {
+      this.emit(
+        'system.notice',
+        { text: 'Two players remain with evil among them — evil may have won.' },
+        ST_ONLY,
+      );
+    }
+  }
+
+  // ------------------------------------------------------------ nominations
+
+  nominate(actorSeatId: string, nomineeSeatId: string): Result<Nomination> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    const to = this.requirePlayer(nomineeSeatId);
+    if (!to.ok) return to;
+    if (this.state.phase !== 'nominations') return err('nominations are not open');
+    if (this.activeNomination()) return err('a nomination is already in progress');
+    if (!from.value.alive) return err('the dead cannot nominate');
+    if (!from.value.restrictions.nominate) return err('you cannot nominate');
+    if (from.value.hasNominatedToday) return err('you have already nominated today');
+    if (to.value.hasBeenNominatedToday) return err(`${to.value.name} has already been nominated today`);
+
+    const nomination: Nomination = {
+      id: this.makeId('nom'),
+      day: this.state.day,
+      kind: to.value.isTraveller ? 'exile' : 'execution',
+      nominatorSeatId: from.value.id,
+      nomineeSeatId: to.value.id,
+      open: true,
+      votes: [],
+    };
+    this.state.nominations.push(nomination);
+    this.state.activeNominationId = nomination.id;
+    from.value.hasNominatedToday = true;
+    to.value.hasBeenNominatedToday = true;
+
+    this.emit(
+      'nomination.made',
+      {
+        nominationId: nomination.id,
+        kind: nomination.kind,
+        nominatorSeatId: from.value.id,
+        nominatorName: from.value.name,
+        nomineeSeatId: to.value.id,
+        nomineeName: to.value.name,
+      },
+      PUBLIC,
+      from.value.id,
+    );
+    return ok(nomination);
+  }
+
+  castVote(actorSeatId: string, vote: boolean): Result<void> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    const nomination = this.activeNomination();
+    if (!nomination || !nomination.open) return err('there is nothing to vote on');
+    if (nomination.votes.some((v) => v.seatId === from.value.id)) return err('you have already voted');
+    if (!from.value.restrictions.vote) return err('you cannot vote');
+
+    let ghost = false;
+    if (!from.value.alive && nomination.kind === 'execution') {
+      if (vote) {
+        if (!from.value.ghostVote) return err('you have already spent your ghost vote');
+        from.value.ghostVote = false;
+        ghost = true;
+      }
+    }
+    nomination.votes.push({ seatId: from.value.id, vote, ghost, at: this.now() });
+    this.emit(
+      'vote.cast',
+      { nominationId: nomination.id, seatId: from.value.id, name: from.value.name, vote, ghost },
+      PUBLIC,
+      from.value.id,
+    );
+    return ok(undefined);
+  }
+
+  stCloseNomination(actorSeatId: string): Result<Nomination> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const nomination = this.activeNomination();
+    if (!nomination || !nomination.open) return err('there is no open nomination');
+    return ok(this.closeNominationInternal(actorSeatId));
+  }
+
+  private closeNominationInternal(actorSeatId?: string): Nomination {
+    const nomination = this.activeNomination();
+    if (!nomination) throw new Error('no active nomination');
+    const nominee = this.seat(nomination.nomineeSeatId);
+
+    const tally = nomination.votes.filter((v) => v.vote).length;
+    const threshold =
+      nomination.kind === 'exile'
+        ? Math.ceil(this.players().length / 2)
+        : Math.ceil(this.alivePlayers().length / 2);
+
+    nomination.open = false;
+    nomination.tally = tally;
+    nomination.threshold = threshold;
+    this.state.activeNominationId = undefined;
+
+    if (nomination.kind === 'exile') {
+      nomination.result = tally >= threshold ? 'exiled' : 'not-exiled';
+    } else if (tally < threshold) {
+      nomination.result = 'insufficient';
+    } else if (tally === this.state.highestTally) {
+      // A tie puts nobody on the block, and clears whoever was there.
+      nomination.result = 'tied';
+      this.state.onBlockSeatId = undefined;
+    } else if (tally > this.state.highestTally) {
+      nomination.result = 'on-block';
+      this.state.highestTally = tally;
+      this.state.onBlockSeatId = nomination.nomineeSeatId;
+    } else {
+      nomination.result = 'insufficient';
+    }
+
+    this.emit(
+      'nomination.closed',
+      {
+        nominationId: nomination.id,
+        tally,
+        threshold,
+        result: nomination.result,
+        nomineeSeatId: nomination.nomineeSeatId,
+        nomineeName: nominee?.name ?? '?',
+      },
+      PUBLIC,
+      actorSeatId,
+    );
+
+    if (nomination.result === 'exiled' && nominee) {
+      this.emit('exile', { seatId: nominee.id, name: nominee.name }, PUBLIC, actorSeatId);
+      if (nominee.alive) this.kill(nominee, 'exile', actorSeatId);
+    }
+    return nomination;
+  }
+
+  stCancelNomination(actorSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const nomination = this.activeNomination();
+    if (!nomination) return err('there is no open nomination');
+    nomination.open = false;
+    nomination.result = 'insufficient';
+    nomination.tally = nomination.votes.filter((v) => v.vote).length;
+    this.state.activeNominationId = undefined;
+    const nominator = this.seat(nomination.nominatorSeatId);
+    const nominee = this.seat(nomination.nomineeSeatId);
+    if (nominator) nominator.hasNominatedToday = false;
+    if (nominee) nominee.hasBeenNominatedToday = false;
+    this.emit('system.notice', { text: 'The Storyteller cancelled the nomination.' }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  /** Override who dies at dusk; `null` spares everyone. */
+  stSetOnBlock(actorSeatId: string, targetSeatId: string | null): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (targetSeatId === null) {
+      this.state.onBlockSeatId = undefined;
+      this.emit('st.grimoire', { seatId: '', change: 'the block is empty' }, ST_ONLY, actorSeatId);
+      return ok(undefined);
+    }
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+    this.state.onBlockSeatId = to.value.id;
+    this.emit(
+      'st.grimoire',
+      { seatId: to.value.id, change: `${to.value.name} is on the block` },
+      ST_ONLY,
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
+  private resolveExecution(actorSeatId: string): void {
+    const seat = this.seat(this.state.onBlockSeatId);
+    if (!seat) {
+      this.emit('execution', { seatId: null, name: null }, PUBLIC, actorSeatId);
+      return;
+    }
+    this.emit('execution', { seatId: seat.id, name: seat.name }, PUBLIC, actorSeatId);
+    if (seat.alive) this.kill(seat, 'execution', actorSeatId);
+    this.state.onBlockSeatId = undefined;
+  }
+}

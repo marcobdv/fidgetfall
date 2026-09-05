@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.tsbuildinfo
+data/characters/roles.local.json
+.env

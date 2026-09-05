@@ -1,0 +1,95 @@
+[
+  {
+    "id": "_meta",
+    "name": "Whispers in the Orchard",
+    "author": "Fidgetfall",
+    "edition": "homebrew",
+    "description": "An original 10-character demo script written for this server. Unlike the base editions it ships with full ability text, so a game can be run with no extra data files. Balanced for 7-12 players."
+  },
+  {
+    "id": "orchardist",
+    "name": "Orchardist",
+    "team": "townsfolk",
+    "ability": "You start knowing two players, at least one of whom is evil.",
+    "firstNight": 20,
+    "firstNightReminder": "Point to two players, at least one of whom is evil.",
+    "reminders": ["Marked"]
+  },
+  {
+    "id": "beekeeper",
+    "name": "Beekeeper",
+    "team": "townsfolk",
+    "ability": "Each night*, you learn how many of your two living neighbours are evil.",
+    "otherNight": 30,
+    "otherNightReminder": "Show the number of evil living neighbours on your fingers."
+  },
+  {
+    "id": "cellarman",
+    "name": "Cellarman",
+    "team": "townsfolk",
+    "ability": "Each night, choose a player other than yourself: they cannot be killed by the Blight tonight.",
+    "firstNight": 25,
+    "firstNightReminder": "The Cellarman points to a player. Mark that player Sheltered.",
+    "otherNight": 10,
+    "otherNightReminder": "The Cellarman points to a player. Mark that player Sheltered.",
+    "reminders": ["Sheltered"]
+  },
+  {
+    "id": "cooper",
+    "name": "Cooper",
+    "team": "townsfolk",
+    "ability": "Once per game, during the day, publicly choose a player: if they are the Blight, they die.",
+    "reminders": ["Barrel used"]
+  },
+  {
+    "id": "windvane",
+    "name": "Windvane",
+    "team": "townsfolk",
+    "ability": "You start knowing one good character that is not in play.",
+    "firstNight": 22,
+    "firstNightReminder": "Show one good character token that is not in play."
+  },
+  {
+    "id": "sleepwalker",
+    "name": "Sleepwalker",
+    "team": "outsider",
+    "ability": "You cannot whisper. All of your conversations happen in the town square.",
+    "reminders": []
+  },
+  {
+    "id": "windfall",
+    "name": "Windfall",
+    "team": "outsider",
+    "ability": "If you nominate a player, your vote does not count today.",
+    "reminders": ["Voteless"]
+  },
+  {
+    "id": "crowherd",
+    "name": "Crowherd",
+    "team": "minion",
+    "ability": "Each night, choose a player: the Storyteller may give them false information tomorrow.",
+    "firstNight": 15,
+    "firstNightReminder": "The Crowherd points to a player. Mark that player Misled.",
+    "otherNight": 8,
+    "otherNightReminder": "The Crowherd points to a player. Mark that player Misled.",
+    "reminders": ["Misled"]
+  },
+  {
+    "id": "magpie",
+    "name": "Magpie",
+    "team": "minion",
+    "ability": "Once per game, at night, choose a player: you learn their character.",
+    "otherNight": 12,
+    "otherNightReminder": "If the Magpie has not used their ability, they may point to a player. Show that player's character token.",
+    "reminders": ["Nest used"]
+  },
+  {
+    "id": "blight",
+    "name": "Blight",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. You also learn one good character that is not in play.",
+    "otherNight": 20,
+    "otherNightReminder": "The Blight points to a player. That player dies. Then show one good character token that is not in play.",
+    "reminders": ["Dead"]
+  }
+]

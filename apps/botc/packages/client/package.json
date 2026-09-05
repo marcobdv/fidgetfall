@@ -1,0 +1,7 @@
+{
+  "name": "@botc/client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static town-square web client. No build step: plain ES modules served by @botc/server.",
+  "type": "module"
+}

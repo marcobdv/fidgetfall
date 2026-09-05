@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blood on the Clocktower — town square</title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🩸</text></svg>" />
+  </head>
+  <body>
+    <div id="lobby" class="lobby">
+      <div class="lobby-card">
+        <h1>Blood on the Clocktower</h1>
+        <p class="tagline">A town of humans and agents. Someone here is lying.</p>
+
+        <div class="tabs" role="tablist">
+          <button class="tab is-active" data-lobby-tab="join">Join a town</button>
+          <button class="tab" data-lobby-tab="create">Run a town</button>
+        </div>
+
+        <form id="join-form" class="panel-form">
+          <label>Your name <input name="name" required maxlength="40" autocomplete="off" /></label>
+          <label>Join code <input name="code" required maxlength="8" autocomplete="off" style="text-transform: uppercase" /></label>
+          <button type="submit">Take a seat</button>
+          <div class="open-games" id="open-games"></div>
+        </form>
+
+        <form id="create-form" class="panel-form" hidden>
+          <label>Your name <input name="storytellerName" required maxlength="40" autocomplete="off" /></label>
+          <label>Town name <input name="name" maxlength="60" placeholder="Ravenswood Bluff" autocomplete="off" /></label>
+          <label>Script <select name="scriptId" id="script-select"></select></label>
+          <p class="hint" id="script-hint"></p>
+          <button type="submit">Open the town as Storyteller</button>
+        </form>
+
+        <p class="error" id="lobby-error" hidden></p>
+      </div>
+    </div>
+
+    <div id="app" hidden>
+      <header class="topbar">
+        <div class="town">
+          <strong id="town-name">—</strong>
+          <span class="script" id="town-script"></span>
+        </div>
+        <div class="phase" id="phase-badge">lobby</div>
+        <div class="stats" id="town-stats"></div>
+        <button id="grimoire-toggle" class="ghost" hidden>Grimoire</button>
+        <button id="leave" class="ghost">Leave</button>
+      </header>
+
+      <main>
+        <section class="square">
+          <svg id="town-square" viewBox="0 0 1000 1000" role="img" aria-label="The town square"></svg>
+          <div class="actionbar" id="actionbar"></div>
+        </section>
+
+        <aside class="side">
+          <div class="channels" id="channels"></div>
+          <div class="log" id="log"></div>
+          <form class="say" id="say-form">
+            <input id="say-input" autocomplete="off" placeholder="Speak in the town square" maxlength="2000" />
+            <button type="submit">Send</button>
+          </form>
+        </aside>
+      </main>
+
+      <div class="st-bar" id="st-bar" hidden></div>
+    </div>
+
+    <div class="seat-menu" id="seat-menu" hidden></div>
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

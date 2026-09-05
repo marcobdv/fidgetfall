@@ -42,3 +42,4 @@ Options we rejected, and why.
 | [0006](0006-avoid-headless-scene-tests.md) | Favor pure-logic tests; avoid headless scene tests | Accepted |
 | [0007](0007-placeholder-first-tier1-final.md) | Placeholder-first, Tier-1-final policy | Accepted |
 | [0008](0008-games-graduate-to-own-repos.md) | Games graduate to their own repos at greenlight | Accepted |
+| [0009](0009-botc-server-in-apps.md) | Non-Godot services live in `apps/` | Accepted |

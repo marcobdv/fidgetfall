@@ -1,0 +1,23 @@
+{
+  "name": "@botc/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/src/main.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/src/main.js",
+    "test": "tsc -b && node --test \"dist/test/*.test.js\"",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@botc/engine": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.18.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13"
+  }
+}
