@@ -87,6 +87,57 @@ describe('the chronicle', () => {
     assert.match(story, /The Storyteller: \*Correction: the vote closed at 3 of 3/);
   });
 
+  it('opens everyones notes at the end and marks them against the truth', () => {
+    const t = playedOut();
+    const ana = t.byName('Ana').id;
+    expectOk(
+      t.game.setNote(ana, t.byName('Eve').id, {
+        alignment: 'evil',
+        teams: ['minion', 'demon'],
+        confidence: 'likely',
+        text: 'Never answered about night one.',
+      }),
+    );
+    expectOk(
+      t.game.setNote(ana, t.byName('Ben').id, { alignment: 'evil', text: 'Voted to save Eve.' }),
+    );
+
+    const story = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id });
+    assert.match(story, /## What everyone believed/);
+    // Eve really was the Wraith, so Ana's read is marked correct.
+    assert.match(story, /on \*\*Eve\*\* — evil ✓, minion\/demon ✓.*they were the Wraith/);
+    assert.match(story, /> Never answered about night one\./);
+    // Ben was the Smith, so the same player's other read is marked wrong.
+    assert.match(story, /on \*\*Ben\*\* — evil ✗, and they were the Smith/);
+  });
+
+  it('shows afterwards who told whom what', () => {
+    const t = playedOut();
+    // The game is over; rewind to a day so claims can be made, then re-end it.
+    const live = table(['Ana', 'Ben', 'Cal'], { Ana: 'wraith', Ben: 'seer', Cal: 'baker' });
+    expectOk(live.game.stAdvancePhase(live.st.id));
+    expectOk(live.game.claim(live.byName('Ana').id, 'seer', live.byName('Ben').id));
+    expectOk(live.game.claim(live.byName('Ana').id, 'baker', live.byName('Cal').id));
+    expectOk(live.game.claim(live.byName('Ben').id, 'seer', null));
+    expectOk(live.game.stEndGame(live.st.id, 'evil', 'The Wraith survived.'));
+
+    const story = writeChronicle(live.game, { kind: 'seat', seatId: live.byName('Cal').id });
+    assert.match(story, /## What everyone said they were/);
+    // Both halves of the demon's double story are visible now, to everyone.
+    assert.match(story, /\*\*Ana\*\* was the Wraith and said: Seer to Ben; Baker to Cal — not all of that was true/);
+    // The honest player is not accused of lying.
+    assert.match(story, /\*\*Ben\*\* was the Seer and said: Seer to the whole town$/m);
+    assert.equal(t.game.state.phase, 'over');
+  });
+
+  it('keeps notes private while the game is still running', () => {
+    const t = table(['Ana', 'Ben', 'Cal'], { Cal: 'wraith' });
+    expectOk(t.game.setNote(t.byName('Ana').id, t.byName('Cal').id, { text: 'shifty' }));
+    const story = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Ben').id });
+    assert.doesNotMatch(story, /What everyone believed/);
+    assert.doesNotMatch(story, /shifty/);
+  });
+
   it('counts the game up at the end', () => {
     const t = playedOut();
     const story = writeChronicle(t.game, { kind: 'storyteller' });

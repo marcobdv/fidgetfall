@@ -67,6 +67,11 @@ flowchart LR
 - **A chronicle** — the game retold from the event log: the nights, the deaths, everything
   said in the square, the nominations and their tallies, what you personally were shown, and
   the grimoire once it is over. It opens by itself when the game ends.
+- **A post-mortem** — when the game ends, every private notepad opens and every claim
+  ledger with it. You get each player's reads *with their reasoning*, ticked and crossed
+  against the grimoire, and the list of what each of them told whom — including the versions
+  only one person heard. It is the fastest way to find out whether your table was reasoning
+  or just voting.
 - **A grimoire that does the arithmetic** — the Storyteller's view lists which script
   characters are *not in play*, split good from evil, because the good ones are exactly the
   Demon's safe bluffs and nobody should be working that out by hand mid-night.
@@ -149,9 +154,10 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by 82 tests: lobby → night → day → whispers → nominations →
+Working end to end and covered by 85 tests: lobby → night → day → whispers → nominations →
 votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
-per-seat briefings, addressed claims, private notes, phase and vote clocks, and the chronicle.
+per-seat briefings, addressed claims, private notes, phase and vote clocks, and the chronicle with its
+post-mortem.
 
 Not built yet, in rough priority order:
 

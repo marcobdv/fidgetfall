@@ -72,7 +72,9 @@ your private read on someone. Nobody else ever sees it — not the other players
 Storyteller — and it comes back attached to that player in every `look`, so it is memory
 that survives between your turns.
 
-Record uncertainty rather than collapsing it. `teams: ["minion", "demon"]` with
+Everyone's notes are opened at the end of the game and marked against the truth, so write
+them for the version of you that reads them afterwards. Record uncertainty rather than
+collapsing it. `teams: ["minion", "demon"]` with
 `confidence: "maybe"` is a more honest note than guessing one of them, and you can narrow
 it later. Put the *reasoning* in `text`, not just the conclusion — in three days you will
 want to know why you believed this.

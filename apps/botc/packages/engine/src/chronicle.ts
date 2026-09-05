@@ -341,6 +341,7 @@ export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOpt
   }
 
   if (reveal) {
+    out.push(...postMortem(game));
     out.push('', '## The grimoire', '', '| Seat | Player | Character | Team | Fate |', '|---|---|---|---|---|');
     for (const seat of game.players()) {
       const character = game.character(seat.characterId);
@@ -371,6 +372,92 @@ export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOpt
   );
 
   return out.join('\n');
+}
+
+/**
+ * What each player actually thought, laid against what was true. Their notes
+ * are private for the whole game and open at the end — which is the moment you
+ * find out whether anyone was reasoning or just voting.
+ */
+function postMortem(game: Game): string[] {
+  const out: string[] = [];
+  const players = game.players();
+
+  const beliefs: string[] = [];
+  for (const seat of players) {
+    const notes = game.notesFor(seat.id);
+    if (!notes.length) continue;
+    const own = game.character(seat.characterId);
+    beliefs.push(
+      '',
+      `**${seat.name}** — ${own ? `${own.name}, ${seat.alignment ?? 'good'}` : 'no character'}`,
+    );
+    for (const note of notes) {
+      const target = game.seat(note.targetSeatId);
+      if (!target) continue;
+      const truth = game.character(target.characterId);
+      const said: string[] = [];
+      if (note.alignment) {
+        const right = note.alignment !== 'unknown' && note.alignment === target.alignment;
+        said.push(`${note.alignment} ${note.alignment === 'unknown' ? '' : right ? '✓' : '✗'}`.trim());
+      }
+      if (note.teams.length) {
+        const right = truth ? note.teams.includes(truth.team) : false;
+        said.push(`${note.teams.join('/')} ${right ? '✓' : '✗'}`);
+      }
+      if (note.characters.length) {
+        const right = truth ? note.characters.includes(truth.id) : false;
+        said.push(
+          `${note.characters.map((id) => game.character(id)?.name ?? id).join('/')} ${right ? '✓' : '✗'}`,
+        );
+      }
+      if (note.confidence) said.push(`(${note.confidence})`);
+      beliefs.push(
+        `- on **${target.name}** — ${said.join(', ') || 'no read'}${
+          truth ? `, and they were the ${truth.name}` : ''
+        }`,
+      );
+      if (note.text) beliefs.push(`  > ${note.text}`);
+    }
+  }
+  if (beliefs.length) {
+    out.push(
+      '',
+      '## What everyone believed',
+      '',
+      'Every private note, opened at the end and marked against the grimoire.',
+      ...beliefs,
+    );
+  }
+
+  const stories: string[] = [];
+  for (const seat of players) {
+    const claims = game.claimsMadeBy(seat.id);
+    if (!claims.length) continue;
+    const truth = game.character(seat.characterId);
+    const told = claims.map((c) => {
+      const character = game.character(c.characterId)?.name ?? c.characterId;
+      const audience = c.toSeatId ? (game.seat(c.toSeatId)?.name ?? '?') : 'the whole town';
+      return `${character} to ${audience}`;
+    });
+    const honest = claims.every((c) => c.characterId === seat.characterId);
+    stories.push(
+      `- **${seat.name}** was the ${truth?.name ?? 'unassigned'} and said: ${told.join('; ')}${
+        honest ? '' : ' — not all of that was true'
+      }`,
+    );
+  }
+  if (stories.length) {
+    out.push(
+      '',
+      '## What everyone said they were',
+      '',
+      'Including the versions only one person heard.',
+      ...stories,
+    );
+  }
+
+  return out;
 }
 
 const nth = (n: number): string => {
