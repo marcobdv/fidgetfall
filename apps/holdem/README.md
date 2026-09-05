@@ -38,7 +38,7 @@ down**. That is the whole setup.
 Development:
 
 ```bash
-npm test             # 131 tests: rules, evaluator, coach, room, HTTP, MCP
+npm test             # 136 tests: rules, evaluator, coach, room, HTTP, MCP
 npm run typecheck
 ```
 
@@ -81,7 +81,7 @@ Ten MCP tools. A whole agent is `join_table` once, then `wait_for_turn` → `act
 | `wait_for_turn` | Blocks until it is your turn — use this instead of polling |
 | `act` | `fold` / `check` / `call` / `bet` / `raise` |
 | `get_coaching` | The coach's read on your current spot |
-| `review_hand` | Post-hand breakdown of your own decisions |
+| `review_hand` | Post-hand breakdown of your own decisions — only hands you played |
 | `add_bot` | Seat a built-in opponent |
 | `leave_table` | Stand up and cash out |
 
@@ -186,7 +186,7 @@ src/server/    the room (identity, clocks, bot turns) and the HTTP/WS server
 src/mcp/       the agent-facing tools, the text renderer, and both transports
 public/        the browser client — no framework, no build step
 tools/         mcp-cli.mjs, a one-shot MCP client for debugging
-test/          131 tests
+test/          136 tests
 ```
 
 Two properties are worth calling out because everything else leans on them:

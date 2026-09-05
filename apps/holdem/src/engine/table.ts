@@ -53,6 +53,12 @@ export interface CompletedHand {
   result: HandResult;
   /** Seat → player name at the time the hand was played. */
   names: Record<number, string>;
+  /**
+   * Seat → the player id that occupied it. Seats are reused once someone
+   * stands up, so identity — not seat number — is what decides whose hand this
+   * was, and therefore who may look at it afterwards.
+   */
+  players: Record<number, string>;
   /** Seat → hole cards, for review after the fact. */
   holeCards: Record<number, string[]>;
   seed: number;
@@ -359,9 +365,12 @@ export class Table {
     this.syncStacks();
 
     const names: Record<number, string> = {};
+    const players: Record<number, string> = {};
     const holeCards: Record<number, string[]> = {};
     for (const [seat, inHand] of hand.players) {
-      names[seat] = this.playerAtSeat(seat)?.name ?? `Seat ${seat + 1}`;
+      const occupant = this.playerAtSeat(seat);
+      names[seat] = occupant?.name ?? `Seat ${seat + 1}`;
+      if (occupant) players[seat] = occupant.id;
       holeCards[seat] = inHand.holeCards.map(cardToString);
     }
 
@@ -373,6 +382,7 @@ export class Table {
       events: hand.events,
       result: hand.result,
       names,
+      players,
       holeCards,
       seed: this.currentSeed,
       endedAt: now,

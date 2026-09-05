@@ -270,7 +270,9 @@ export function buildMcpServer(client: RoomClient): McpServer {
           .int()
           .positive()
           .optional()
-          .describe("Which hand to review. Defaults to the most recent one."),
+          .describe(
+            "Which hand to review. Defaults to the most recent hand you played. You can only review hands you were dealt into.",
+          ),
       },
     },
     async ({ token, handNumber }) => {

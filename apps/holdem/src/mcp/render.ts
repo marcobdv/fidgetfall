@@ -96,16 +96,20 @@ export function renderTables(tables: TableSummary[]): string {
 }
 
 export function renderAdvice(advice: CoachAdvice): string {
+  // Whole percentages throughout: the tips below and the post-hand review both
+  // round, and a header reading 43.3% beside an explanation reading 43% invites
+  // a reader to hunt for a discrepancy that is not there.
+  const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
+
   const lines = [
     `${advice.handDescription}`,
-    `Equity ${(advice.equity.equity * 100).toFixed(1)}%${advice.equity.exact ? " (exact)" : ""}`,
+    `Equity ${pct(advice.equity.equity)}${advice.equity.exact ? " (exact)" : ""}`,
   ];
   if (advice.potOdds) {
-    const breakEven = advice.potOdds.breakEven * 100;
     lines.push(
-      `Break-even ${breakEven.toFixed(1)}% to call ${advice.potOdds.toCall}` +
+      `Break-even ${pct(advice.potOdds.breakEven)} to call ${advice.potOdds.toCall}` +
         (advice.pressure.margin > 0
-          ? ` — but treat the bar as ${(breakEven + advice.pressure.margin * 100).toFixed(1)}% ` +
+          ? ` — but treat the bar as ${pct(advice.potOdds.breakEven + advice.pressure.margin)} ` +
             `against a bet this size (${advice.pressure.level})`
           : ""),
     );

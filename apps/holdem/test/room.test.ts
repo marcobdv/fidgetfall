@@ -5,13 +5,14 @@ import { PokerRoom } from "../src/server/room.js";
  * A room on a clock the test drives. `advance()` moves time forward and ticks,
  * so bot turns and action clocks resolve exactly when the test says they do.
  */
-function room(options: { botThinkMs?: number; handIntervalMs?: number; actionTimeoutMs?: number } = {}) {
+function room(options: { botThinkMs?: number; handIntervalMs?: number; seed?: number } = {}) {
   let clock = 0;
   const r = new PokerRoom({
     botThinkMs: options.botThinkMs ?? 0,
     handIntervalMs: options.handIntervalMs ?? 0,
     idleTableMs: 1_000_000,
     clock: () => clock,
+    ...(options.seed === undefined ? {} : { seed: options.seed }),
   });
   return {
     room: r,
@@ -163,6 +164,36 @@ describe("bots at the table", () => {
   });
 });
 
+describe("a seeded room replays identically", () => {
+  it("deals the same cards and draws the same bot decisions", () => {
+    const play = () => {
+      const { room: r, advance } = room({ seed: 4242 });
+      // No maniac here: it shoves the table broke inside a few hands, which
+      // makes for a short and uninteresting replay.
+      const table = r.createTable({
+        minBuyIn: 1000,
+        maxBuyIn: 1000,
+        bots: ["station", "balanced", "rock"],
+      });
+      for (let i = 0; i < 4000 && table.history.length < 8; i++) advance();
+      return table.history.map((h) => `${h.handNumber}:${h.board.join("")}:${JSON.stringify(h.result.net)}`);
+    };
+    const first = play();
+    expect(first.length).toBeGreaterThanOrEqual(8);
+    expect(play()).toEqual(first);
+  });
+
+  it("deals differently without a seed", () => {
+    const play = () => {
+      const { room: r, advance } = room();
+      const table = r.createTable({ minBuyIn: 400, maxBuyIn: 400, bots: ["balanced", "rock"] });
+      for (let i = 0; i < 2000 && table.history.length < 3; i++) advance();
+      return table.history.map((h) => h.board.join(""));
+    };
+    expect(play()).not.toEqual(play());
+  });
+});
+
 describe("the running commentary accounts for every chip", () => {
   /**
    * The log is what a player actually reads, and it is rendered separately from
@@ -193,7 +224,9 @@ describe("the running commentary accounts for every chip", () => {
   }
 
   it("balances a short-stack session full of all-ins", () => {
-    const { room: r, advance } = room();
+    // Seeded, so the session is the same every run: the invariant is what is
+    // under test, and an unseeded table sometimes dries up after four hands.
+    const { room: r, advance } = room({ seed: 20250905 });
     const table = r.createTable({
       name: "Audit",
       smallBlind: 10,
@@ -332,6 +365,92 @@ describe("waiting for a turn", () => {
     clearInterval(pump);
     expect(wait.yourTurn).toBe(true);
     expect(table.hand!.actingSeat).toBe(ada.seat);
+  });
+});
+
+describe("reviewing a hand belongs to whoever played it", () => {
+  /** Plays hands until `done()`, acting passively for `seating`. */
+  function play(
+    r: PokerRoom,
+    table: ReturnType<PokerRoom["createTable"]>,
+    advance: () => void,
+    seating: { token: string; seat: number },
+    done: () => boolean,
+    limit = 400,
+  ) {
+    for (let i = 0; i < limit && !done(); i++) {
+      advance();
+      if (table.hand && !table.hand.isComplete && table.hand.actingSeat === seating.seat) {
+        const legal = table.hand.legalActions(seating.seat)!;
+        r.act(seating.token, legal.canCheck ? { type: "check" } : { type: "fold" });
+      }
+    }
+  }
+
+  it("refuses to show a hand to whoever later takes the same seat", () => {
+    const { room: r, advance } = room();
+    const table = r.createTable({ minBuyIn: 1000, maxBuyIn: 1000, bots: ["station"] });
+
+    const alice = r.join(table.config.id, { name: "Alice", kind: "human", buyIn: 1000 });
+    play(r, table, advance, alice, () => table.history.length >= 1);
+    const played = table.history[0]!;
+    expect(played.holeCards[alice.seat]).toHaveLength(2);
+
+    // Alice stands up and the seat is genuinely released.
+    r.leave(alice.token);
+    for (let i = 0; i < 400 && table.playerAtSeat(alice.seat); i++) advance();
+    expect(table.playerAtSeat(alice.seat)).toBeUndefined();
+
+    const mallory = r.join(table.config.id, {
+      name: "Mallory",
+      kind: "human",
+      buyIn: 1000,
+      seat: alice.seat,
+    });
+    expect(mallory.seat).toBe(alice.seat);
+
+    // Mallory occupies Alice's old seat but never played that hand.
+    expect(r.review(mallory.token, played.handNumber)).toBeNull();
+  });
+
+  it("defaults to the last hand you played, not the last hand the table played", () => {
+    const { room: r, advance } = room();
+    const table = r.createTable({ minBuyIn: 1000, maxBuyIn: 1000, bots: ["station", "rock"] });
+
+    const ada = r.join(table.config.id, { name: "Ada", kind: "human", buyIn: 1000 });
+    play(r, table, advance, ada, () => table.history.length >= 1);
+
+    // Ada sits out, so the table plays on without her. The steps are coarse so
+    // her action clock expires rather than the table stalling on a seat that is
+    // no longer answering.
+    r.setSittingOut(ada.token, true);
+    const before = table.history.length;
+    for (let i = 0; i < 200 && table.history.length < before + 3; i++) advance(1000);
+
+    const hersByNumber = table.history
+      .filter((h) => h.players[ada.seat] === ada.playerId)
+      .map((h) => h.handNumber);
+    const latest = table.history[table.history.length - 1]!.handNumber;
+    expect(hersByNumber.length).toBeGreaterThan(0);
+    // The table has moved past her last hand, which is the whole point.
+    expect(latest).toBeGreaterThan(Math.max(...hersByNumber));
+
+    // The default review is still hers, rather than nothing at all.
+    const review = r.review(ada.token);
+    expect(review).not.toBeNull();
+    expect(review!.handNumber).toBe(Math.max(...hersByNumber));
+  });
+
+  it("still lets a player review their own hand by number", () => {
+    const { room: r, advance } = room();
+    const table = r.createTable({ minBuyIn: 1000, maxBuyIn: 1000, bots: ["station"] });
+    const ada = r.join(table.config.id, { name: "Ada", kind: "human", buyIn: 1000 });
+    play(r, table, advance, ada, () => table.history.length >= 1);
+
+    const played = table.history[0]!;
+    const review = r.review(ada.token, played.handNumber)!;
+    expect(review.handNumber).toBe(played.handNumber);
+    expect(review.holeCards).toEqual(played.holeCards[ada.seat]);
   });
 });
 

@@ -76,6 +76,12 @@ export interface RoomOptions {
    * synthetic tick clock with `Date.now()` elsewhere silently freezes bots.
    */
   clock?: () => number;
+  /**
+   * Seeds both the shuffle and every bot's randomness, making a whole session
+   * reproducible. Without it each table deals fresh cards and each bot draws
+   * its own seed, which is what you want in play and hopeless in a test.
+   */
+  seed?: number;
 }
 
 const DEFAULTS = {
@@ -96,8 +102,11 @@ export class PokerRoom {
   private readonly tokens = new Map<string, { tableId: string; playerId: string }>();
   private readonly bots = new Map<string, Map<string, BotSeat>>();
   private readonly listeners = new Set<Listener>();
-  private readonly options: Required<Omit<RoomOptions, "clock">>;
+  private readonly options: Required<Omit<RoomOptions, "clock" | "seed">>;
   private readonly clock: () => number;
+  private readonly seed?: number;
+  /** Advanced per deal, so each hand of a seeded session differs from the last. */
+  private deals = 0;
   /** Bumped on every observable change, so clients can tell states apart. */
   private readonly revisions = new Map<string, number>();
   private readonly nextHandAt = new Map<string, number>();
@@ -109,6 +118,7 @@ export class PokerRoom {
       idleTableMs: options.idleTableMs ?? DEFAULTS.idleTableMs,
     };
     this.clock = options.clock ?? Date.now;
+    this.seed = options.seed;
   }
 
   /** The room's current time. Every default `now` argument comes from here. */
@@ -238,9 +248,12 @@ export class PokerRoom {
       { name, kind: "agent", buyIn: table.config.maxBuyIn, seat },
       now,
     );
+    const seated = this.bots.get(tableId)!;
     this.bots.get(tableId)!.set(seating.playerId, {
       policy,
-      rng: botRng(hashString(seating.playerId)),
+      // A seeded room derives bot randomness from its seat order rather than
+      // from a random player id, so the same session replays identically.
+      rng: botRng(this.seed === undefined ? hashString(seating.playerId) : this.seed + seated.size * 7919),
       actAfter: now,
     });
     this.changed(tableId);
@@ -350,11 +363,19 @@ export class PokerRoom {
     const player = table.players.get(playerId);
     if (!player) return null;
 
+    // Reviews are keyed on who actually played the hand, not on the seat
+    // number. Seats are reused, and a later occupant must never be able to read
+    // the cards of whoever sat there before them.
+    const playedIt = (h: { players: Record<number, string> }) => h.players[player.seat] === playerId;
+
     const hand =
       handNumber === undefined
-        ? table.history[table.history.length - 1]
+        ? [...table.history].reverse().find(playedIt)
         : table.history.find((h) => h.handNumber === handNumber);
-    if (!hand) return null;
+
+    // The default also lands on the last hand *you* played rather than the last
+    // hand the table played — a busted player wants the hand that busted them.
+    if (!hand || !playedIt(hand)) return null;
     return reviewHand(hand, player.seat);
   }
 
@@ -430,6 +451,11 @@ export class PokerRoom {
           this.nextHandAt.set(tableId, due);
           if (now >= due) {
             this.nextHandAt.delete(tableId);
+            // A seeded room deals a deterministic sequence, so a whole session
+            // can be replayed. Unseeded, the table shuffles freshly each hand.
+            if (this.seed !== undefined && table.nextSeed === null) {
+              table.nextSeed = (this.seed + this.deals++ * 104729) >>> 0;
+            }
             if (table.startHand(now)) changed = true;
           }
         }
