@@ -85,6 +85,8 @@ export interface GameView {
   onBlockSeatId?: string;
   winner?: Alignment;
   endedReason?: string;
+  /** Storyteller only: script characters nobody was given. */
+  notInPlay?: Character[];
   /** Configured phase durations in seconds. */
   timers: Timers;
   /** Seconds until this phase ends itself, if a clock is running. */
@@ -213,7 +215,10 @@ export function buildView(game: Game, viewer: Viewer): GameView {
   };
   const left = game.secondsLeft();
   if (left !== undefined) view.secondsLeft = left;
-  if (isST(viewer)) view.joinCode = state.joinCode;
+  if (isST(viewer)) {
+    view.joinCode = state.joinCode;
+    view.notInPlay = game.charactersNotInPlay();
+  }
   if (state.onBlockSeatId) view.onBlockSeatId = state.onBlockSeatId;
   if (state.winner) view.winner = state.winner;
   if (state.endedReason) view.endedReason = state.endedReason;

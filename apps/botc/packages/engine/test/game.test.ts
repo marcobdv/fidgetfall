@@ -280,6 +280,19 @@ describe('views', () => {
     assert.equal(st.seats.find((s) => s.name === 'Cal')?.alignment, 'evil');
   });
 
+  it('works out for the Storyteller which characters are not in play', () => {
+    const t = table(['Ana', 'Ben', 'Cal'], { Ana: 'seer', Ben: 'smith', Cal: 'wraith' });
+    const spare = t.game.charactersNotInPlay().map((c) => c.id);
+    assert.deepEqual(spare.sort(), ['baker', 'oaf', 'pilgrim', 'thief']);
+
+    const st = buildView(t.game, { kind: 'storyteller' });
+    assert.deepEqual(st.notInPlay?.map((c) => c.id).sort(), ['baker', 'oaf', 'pilgrim', 'thief']);
+
+    // It is a Storyteller tool: no player sees the bluff pool.
+    const ana = buildView(t.game, { kind: 'seat', seatId: t.byName('Ana').id });
+    assert.equal(ana.notInPlay, undefined);
+  });
+
   it('reports the votes needed to execute', () => {
     const t = table(['Ana', 'Ben', 'Cal', 'Dee', 'Eve']);
     assert.equal(buildView(t.game, { kind: 'spectator' }).votesToExecute, 3);

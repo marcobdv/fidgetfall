@@ -155,6 +155,18 @@ export class Game {
     return this.state.script.characters.find((c) => c.id === characterId);
   }
 
+  /**
+   * Script characters nobody has been given. The good ones are exactly the
+   * Demon's safe bluffs, so the Storyteller should not have to work them out by
+   * hand at three in the morning.
+   */
+  charactersNotInPlay(): Character[] {
+    const assigned = new Set(
+      this.state.seats.map((seat) => seat.characterId).filter((id): id is string => Boolean(id)),
+    );
+    return this.state.script.characters.filter((c) => !assigned.has(c.id));
+  }
+
   nightOrder(): Character[] {
     return nightOrder(this.state.script, this.state.day <= 1);
   }

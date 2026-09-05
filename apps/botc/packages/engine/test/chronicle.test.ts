@@ -65,6 +65,21 @@ describe('the chronicle', () => {
     assert.match(story, /It has not\./);
   });
 
+  it('keeps every word said in the square, not just the first and last', () => {
+    const t = table(['Ana', 'Ben', 'Cal', 'Dee'], { Dee: 'wraith' });
+    expectOk(t.game.stAdvancePhase(t.st.id)); // day
+    expectOk(t.game.sayPublic(t.byName('Ana').id, 'Morning.'));
+    expectOk(t.game.sayPublic(t.byName('Ben').id, 'I am the Smith and I claim it now.'));
+    expectOk(t.game.sayPublic(t.byName('Cal').id, 'Ben is lying, I am the Smith.'));
+    expectOk(t.game.sayPublic(t.byName('Dee').id, 'Goodnight.'));
+    const story = writeChronicle(t.game, { kind: 'storyteller' });
+    // The claim in the middle is the line that decides the game.
+    assert.match(story, /\*\*Ben:\*\* "I am the Smith and I claim it now\."/);
+    assert.match(story, /\*\*Cal:\*\* "Ben is lying, I am the Smith\."/);
+    assert.match(story, /\*\*Ana:\*\* "Morning\."/);
+    assert.match(story, /\*\*Dee:\*\* "Goodnight\."/);
+  });
+
   it('keeps what the Storyteller announced out loud', () => {
     const t = playedOut();
     expectOk(t.game.stAnnounce(t.st.id, 'Correction: the vote closed at 3 of 3 and Eve is on the block.'));

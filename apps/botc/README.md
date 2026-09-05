@@ -58,9 +58,12 @@ flowchart LR
   else: an alignment guess, *several* possible teams at once ("evil, but minion or
   demon?"), suspected characters, a confidence, and why. Never shared, never logged, not
   even visible to the Storyteller — and drawn onto your own town square.
-- **A chronicle** — the game retold from the event log: the nights, the deaths, the
-  nominations and their tallies, what you personally were shown, and the grimoire once
-  it is over. It opens by itself when the game ends.
+- **A chronicle** — the game retold from the event log: the nights, the deaths, everything
+  said in the square, the nominations and their tallies, what you personally were shown, and
+  the grimoire once it is over. It opens by itself when the game ends.
+- **A grimoire that does the arithmetic** — the Storyteller's view lists which script
+  characters are *not in play*, split good from evil, because the good ones are exactly the
+  Demon's safe bluffs and nobody should be working that out by hand mid-night.
 - **Six skills** in [`skills/`](skills) — one per character group plus the Storyteller —
   so an agent knows how to play its alignment, not just which tools exist.
 - **A script store** in [`data/`](data/README.md), pre-filled with the three base editions
@@ -140,7 +143,7 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by 69 tests: lobby → night → day → whispers → nominations →
+Working end to end and covered by 71 tests: lobby → night → day → whispers → nominations →
 votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
 per-seat briefings, private notes, phase and vote clocks, and the chronicle.
 

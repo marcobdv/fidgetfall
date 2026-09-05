@@ -359,6 +359,18 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     '',
     '## Your grimoire',
     '',
+    ...(() => {
+      const spare = room.game.charactersNotInPlay();
+      const good = spare.filter((c) => c.team === 'townsfolk' || c.team === 'outsider');
+      return good.length
+        ? [
+            `**Not in play, so safe for the Demon to bluff:** ${good.map((c) => c.name).join(', ')}.`,
+            'Give the Demon three of these on the first night. They are the difference between a',
+            'Demon who can hold a story and one who is caught on day two.',
+            '',
+          ]
+        : [];
+    })(),
     ...room.game.players().map((seat) => {
       const character = room.game.character(seat.characterId);
       return `- ${seat.index + 1}. ${seat.name} — ${character ? `${character.name} (${character.team}, ${seat.alignment})` : 'unassigned'}${seat.alive ? '' : ', dead'}${seat.reminders.length ? ` · ${seat.reminders.map((r) => r.label).join(', ')}` : ''}`;

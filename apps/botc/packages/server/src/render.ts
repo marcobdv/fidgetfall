@@ -80,6 +80,15 @@ export function renderView(view: GameView): string {
     );
   }
 
+  // The Storyteller's bluff pool, worked out for them.
+  if (view.notInPlay?.length) {
+    const good = view.notInPlay.filter((c) => c.team === 'townsfolk' || c.team === 'outsider');
+    const evil = view.notInPlay.filter((c) => c.team === 'minion' || c.team === 'demon');
+    lines.push('', 'Not in play:');
+    if (good.length) lines.push(`  good (safe Demon bluffs): ${good.map((c) => c.name).join(', ')}`);
+    if (evil.length) lines.push(`  evil: ${evil.map((c) => c.name).join(', ')}`);
+  }
+
   lines.push('', `Votes needed to execute: ${view.votesToExecute}.`);
   if (view.onBlockSeatId) {
     const seat = view.seats.find((s) => s.id === view.onBlockSeatId);

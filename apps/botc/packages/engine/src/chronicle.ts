@@ -208,8 +208,17 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
     );
   }
 
-  const opener = act.said[0];
-  if (opener) lines.push(`${opener.name} opened: *"${trim(opener.text)}"*`);
+  // Everything said in the square, in order. The line that decides a game is
+  // almost never the first or the last one.
+  if (act.said.length) {
+    const shown = act.said.slice(0, MAX_QUOTED_PER_DAY);
+    lines.push(
+      ['**In the square:**', ...shown.map((s) => `- **${s.name}:** "${trim(s.text)}"`)].join('\n'),
+    );
+    if (act.said.length > shown.length) {
+      lines.push(`…and ${act.said.length - shown.length} more things said that day.`);
+    }
+  }
 
   // What the Storyteller said out loud is part of the record, not scaffolding.
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
@@ -252,9 +261,6 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
     }
   }
 
-  const closer = act.said.length > 1 ? act.said.at(-1) : undefined;
-  if (closer) lines.push(`Last word before dusk, ${closer.name}: *"${trim(closer.text)}"*`);
-
   for (const execution of act.executions) {
     lines.push(
       execution === null
@@ -271,8 +277,10 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
   return lines;
 }
 
+const MAX_QUOTED_PER_DAY = 60;
+
 const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-const trim = (text: string): string => (text.length > 160 ? `${text.slice(0, 157)}…` : text);
+const trim = (text: string): string => (text.length > 240 ? `${text.slice(0, 237)}…` : text);
 
 export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOptions = {}): string {
   const state = game.state;
