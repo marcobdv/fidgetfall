@@ -346,7 +346,7 @@ export class Game {
 
     const previous = this.state.phase;
     // Close any nomination still on the floor first: it may put someone on the block.
-    if (this.activeNomination()) this.closeNominationInternal(actorSeatId);
+    if (this.activeNomination()) this.closeNominationInternal(actorSeatId, false);
     if (previous === 'nominations' && next === 'dusk') this.resolveExecution(actorSeatId);
 
     if (next === 'night' && previous !== 'night') {
@@ -928,8 +928,13 @@ export class Game {
 
     const nomination = this.activeNomination();
     if (nomination?.open && nomination.endsAt !== undefined && now >= nomination.endsAt) {
-      this.emit('timer.expired', { key: 'vote', consequence: 'the vote is closed' }, PUBLIC);
-      this.closeNominationInternal(this.state.storytellerSeatId);
+      if (nomination.state === 'defence') {
+        this.emit('timer.expired', { key: 'defence', consequence: 'hands go up' }, PUBLIC);
+        this.openVoting(nomination);
+      } else {
+        this.emit('timer.expired', { key: 'vote', consequence: 'the vote is closed' }, PUBLIC);
+        this.closeNominationInternal(this.state.storytellerSeatId);
+      }
       changed = true;
     }
 
@@ -1097,18 +1102,19 @@ export class Game {
     if (from.value.hasNominatedToday) return err('you have already nominated today');
     if (to.value.hasBeenNominatedToday) return err(`${to.value.name} has already been nominated today`);
 
+    const defence = this.state.timers.defence ?? 0;
     const nomination: Nomination = {
       id: this.makeId('nom'),
       day: this.state.day,
       kind: to.value.isTraveller ? 'exile' : 'execution',
       nominatorSeatId: from.value.id,
       nomineeSeatId: to.value.id,
+      state: defence > 0 ? 'defence' : 'voting',
       open: true,
       votes: [],
     };
     this.state.nominations.push(nomination);
     this.state.activeNominationId = nomination.id;
-    this.startVoteClock(nomination);
     from.value.hasNominatedToday = true;
     to.value.hasBeenNominatedToday = true;
 
@@ -1125,7 +1131,45 @@ export class Game {
       PUBLIC,
       from.value.id,
     );
+
+    // The accused answers before anyone raises a hand.
+    if (defence > 0) {
+      nomination.endsAt = this.now() + defence * 1000;
+      this.emit('timer.started', { key: 'defence', seconds: defence, endsAt: nomination.endsAt }, PUBLIC);
+    } else {
+      this.openVoting(nomination);
+    }
     return ok(nomination);
+  }
+
+  /** Hands go up. Called by the clock, or by the Storyteller cutting it short. */
+  private openVoting(nomination: Nomination): void {
+    nomination.state = 'voting';
+    const nominee = this.seat(nomination.nomineeSeatId);
+    this.emit(
+      'nomination.voting',
+      {
+        nominationId: nomination.id,
+        nomineeSeatId: nomination.nomineeSeatId,
+        nomineeName: nominee?.name ?? '?',
+        threshold:
+          nomination.kind === 'exile'
+            ? Math.ceil(this.players().length / 2)
+            : Math.ceil(this.alivePlayers().length / 2),
+      },
+      PUBLIC,
+    );
+    this.startVoteClock(nomination);
+  }
+
+  /** End the defence early and take the vote. */
+  stOpenVoting(actorSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const nomination = this.activeNomination();
+    if (!nomination || nomination.state !== 'defence') return err('nobody is defending themselves');
+    this.openVoting(nomination);
+    return ok(undefined);
   }
 
   castVote(actorSeatId: string, vote: boolean): Result<void> {
@@ -1133,6 +1177,10 @@ export class Game {
     if (!from.ok) return from;
     const nomination = this.activeNomination();
     if (!nomination || !nomination.open) return err('there is nothing to vote on');
+    if (nomination.state === 'defence') {
+      const nominee = this.seat(nomination.nomineeSeatId);
+      return err(`${nominee?.name ?? 'the nominee'} is still answering the charge — hands stay down`);
+    }
     if (nomination.votes.some((v) => v.seatId === from.value.id)) return err('you have already voted');
     if (!from.value.restrictions.vote) return err('you cannot vote');
 
@@ -1181,7 +1229,7 @@ export class Game {
     return ok(this.closeNominationInternal(actorSeatId));
   }
 
-  private closeNominationInternal(actorSeatId?: string): Nomination {
+  private closeNominationInternal(actorSeatId?: string, announceFloor = true): Nomination {
     const nomination = this.activeNomination();
     if (!nomination) throw new Error('no active nomination');
     const nominee = this.seat(nomination.nomineeSeatId);
@@ -1193,8 +1241,10 @@ export class Game {
         : Math.ceil(this.alivePlayers().length / 2);
 
     nomination.open = false;
+    nomination.state = 'closed';
     nomination.tally = tally;
     nomination.threshold = threshold;
+    delete nomination.endsAt;
     this.state.activeNominationId = undefined;
 
     if (nomination.kind === 'exile') {
@@ -1227,6 +1277,13 @@ export class Game {
       actorSeatId,
     );
 
+    // Say plainly that the day is not over: towns forget they may nominate again.
+    // Not when the close is itself the day ending.
+    if (announceFloor && this.state.phase === 'nominations') {
+      const remaining = this.players().filter((s) => s.alive && !s.hasNominatedToday).length;
+      if (remaining > 0) this.emit('nomination.floor', { remaining }, PUBLIC);
+    }
+
     if (nomination.result === 'exiled' && nominee) {
       this.emit('exile', { seatId: nominee.id, name: nominee.name }, PUBLIC, actorSeatId);
       if (nominee.alive) this.kill(nominee, 'exile', actorSeatId);
@@ -1240,6 +1297,7 @@ export class Game {
     const nomination = this.activeNomination();
     if (!nomination) return err('there is no open nomination');
     nomination.open = false;
+    nomination.state = 'closed';
     nomination.result = 'insufficient';
     nomination.tally = nomination.votes.filter((v) => v.vote).length;
     this.state.activeNominationId = undefined;

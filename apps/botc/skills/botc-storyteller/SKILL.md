@@ -142,8 +142,15 @@ will spend the game saying "somebody nominate". Put a clock on it:
 ```
 storyteller { action: "set_timer", timer: "day",         seconds: 300 }
 storyteller { action: "set_timer", timer: "nominations", seconds: 240 }
+storyteller { action: "set_timer", timer: "defence",     seconds: 60 }
 storyteller { action: "set_timer", timer: "vote",        seconds: 90 }
 ```
+
+The **defence** clock is the one that changes how the day feels. Without it a nomination
+opens voting instantly and the accused never gets to speak, so every nomination is a
+formality and the town never has to choose between two candidates. With it, the nominee has
+the floor alone before any hand goes up. `open_voting` cuts it short when they have said
+their piece.
 
 Phases then advance themselves and votes close themselves when the time runs out, and every
 player sees the time remaining in their own view. `clear_timers` hands the pacing back to

@@ -49,6 +49,8 @@ export interface SeatView {
 export interface NominationView {
   id: string;
   kind: Nomination['kind'];
+  /** 'defence' means the nominee is answering and no votes are accepted yet. */
+  state: Nomination['state'];
   open: boolean;
   nominatorSeatId: string;
   nomineeSeatId: string;
@@ -238,6 +240,7 @@ export function buildView(game: Game, viewer: Viewer): GameView {
       ? {
           id: nomination.id,
           kind: nomination.kind,
+          state: nomination.state,
           open: nomination.open,
           nominatorSeatId: nomination.nominatorSeatId,
           nomineeSeatId: nomination.nomineeSeatId,
@@ -351,7 +354,14 @@ export function describeEvent(game: Game, event: AnyEvent): string {
     case 'player.claim.observed':
       return `${name(d['fromSeatId'] as string)} said something private to ${name(d['toSeatId'] as string)}.`;
     case 'nomination.made':
-      return `${d['nominatorName']} nominates ${d['nomineeName']}${d['kind'] === 'exile' ? ' for exile' : ''}.`;
+      return (
+        `${d['nominatorName']} nominates ${d['nomineeName']}${d['kind'] === 'exile' ? ' for exile' : ''}. ` +
+        `${d['nomineeName']}, answer the charge — no hands go up until you have.`
+      );
+    case 'nomination.voting':
+      return `Hands up on ${d['nomineeName']}. ${d['threshold']} votes carry it.`;
+    case 'nomination.floor':
+      return `The floor is still open — ${d['remaining']} ${d['remaining'] === 1 ? 'player has' : 'players have'} not nominated today.`;
     case 'vote.cast':
       return (
         `${d['name']} votes ${d['vote'] ? 'YES' : 'no'}${d['ghost'] ? ' (ghost vote)' : ''}. ` +

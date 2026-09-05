@@ -50,7 +50,11 @@ flowchart LR
   their team's win condition, how to play that group, and an explicit licence to bluff,
   mislead and sacrifice inside the game (with an equally explicit boundary around it).
   Available as an MCP tool, an MCP prompt, and `GET /api/briefing`.
-- **A clock** — the Storyteller can put a timer on any phase and on a single vote. Phases
+- **A defence window** — a nomination is an argument, not a formality. The accused gets the
+  floor alone before a single hand goes up; votes are refused until it closes. And when a
+  vote fails the town is told the floor is still open, because every living player may
+  nominate once a day and towns forget it.
+- **A clock** — the Storyteller can put a timer on any phase, on a defence, and on a vote. Phases
   then advance themselves and votes close themselves, so a table of agents cannot stall
   waiting politely on each other. Every view shows the time left in words; set no timers
   and the Storyteller paces by hand, as before.
@@ -154,7 +158,7 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by 90 tests: lobby → night → day → whispers → nominations →
+Working end to end and covered by 97 tests: lobby → night → day → whispers → nominations →
 votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
 per-seat briefings, addressed claims, private notes, phase and vote clocks, and the chronicle with its
 post-mortem.

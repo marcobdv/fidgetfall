@@ -152,6 +152,16 @@ export function renderActionBar(container, { view, send }) {
   if (!me || me.isStoryteller) return;
 
   const nomination = view.nomination;
+  if (nomination?.state === 'defence') {
+    const nominee = view.seats.find((s) => s.id === nomination.nomineeSeatId);
+    const label = document.createElement('span');
+    label.textContent =
+      nominee?.id === me.seatId
+        ? 'You have been nominated. Answer the charge — nobody can vote until you have.'
+        : `${nominee?.name ?? '?'} is answering the charge. Hands down until they have.`;
+    container.appendChild(label);
+    return;
+  }
   if (nomination?.open) {
     const alreadyVoted = nomination.votes.some((v) => v.seatId === me.seatId);
     const nominee = view.seats.find((s) => s.id === nomination.nomineeSeatId);
@@ -216,7 +226,11 @@ export function renderStorytellerBar(container, { view, send }) {
     button(label, () => send({ type: 'st_set_timer', key, seconds }));
   container.appendChild(timer('Day 5m', 'day', 300));
   container.appendChild(timer('Nominations 3m', 'nominations', 180));
+  container.appendChild(timer('Defence 60s', 'defence', 60));
   container.appendChild(timer('Vote 90s', 'vote', 90));
+  if (view.nomination?.state === 'defence') {
+    container.appendChild(button('Take the vote now', () => send({ type: 'st_open_voting' })));
+  }
   if (Object.keys(view.timers ?? {}).length) {
     container.appendChild(button('Clocks off', () => send({ type: 'st_clear_timers' })));
   }

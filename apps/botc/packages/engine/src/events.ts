@@ -71,6 +71,8 @@ export interface EventPayloads {
     nomineeSeatId: string;
     nomineeName: string;
   };
+  'nomination.voting': { nominationId: string; nomineeSeatId: string; nomineeName: string; threshold: number };
+  'nomination.floor': { remaining: number };
   'vote.cast': {
     nominationId: string;
     seatId: string;

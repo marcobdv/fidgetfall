@@ -142,7 +142,9 @@ export function renderView(view: GameView): string {
     const claimed = nominee?.publicClaim ?? nominee?.claimToYou;
     lines.push(
       '',
-      `Open ${nomination.kind}: ${nameOf(nomination.nominatorSeatId)} nominated ${nameOf(nomination.nomineeSeatId)}.`,
+      nomination.state === 'defence'
+        ? `${nameOf(nomination.nominatorSeatId)} has nominated ${nameOf(nomination.nomineeSeatId)}. ${nameOf(nomination.nomineeSeatId)} is answering the charge — NO VOTES are accepted yet. If that is you, say your piece now; if it is not, listen, because you vote the moment this window shuts.`
+        : `Open ${nomination.kind}: ${nameOf(nomination.nominatorSeatId)} nominated ${nameOf(nomination.nomineeSeatId)}.`,
       // You are about to vote on a life; you should not have to remember what
       // they said they were.
       claimed

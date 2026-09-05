@@ -210,9 +210,13 @@ function render() {
   dom.phaseBadge.dataset.phase = view.phase;
 
   const seconds = view.nomination?.open ? view.nomination.secondsLeft : view.secondsLeft;
-  state.clock = seconds === undefined || seconds === null
-    ? null
-    : { seconds, at: Date.now(), label: view.nomination?.open ? 'vote' : view.phase };
+  const label = view.nomination?.open
+    ? view.nomination.state === 'defence'
+      ? 'defence'
+      : 'vote'
+    : view.phase;
+  state.clock =
+    seconds === undefined || seconds === null ? null : { seconds, at: Date.now(), label };
   renderClock();
 
   const you = view.you;

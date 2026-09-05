@@ -104,6 +104,8 @@ export interface Timers {
   dusk?: number;
   /** How long a single nomination stays open for voting. */
   vote?: number;
+  /** How long the nominee has to answer before hands go up. */
+  defence?: number;
 }
 
 export type TimerKey = keyof Timers;
@@ -141,12 +143,19 @@ export interface Vote {
   at: number;
 }
 
+/**
+ * `defence` — the charge has been made and the nominee is answering it; no
+ * hands go up yet. `voting` — the floor is taking votes. `closed` — done.
+ */
+export type NominationState = 'defence' | 'voting' | 'closed';
+
 export interface Nomination {
   id: string;
   day: number;
   kind: NominationKind;
   nominatorSeatId: string;
   nomineeSeatId: string;
+  state: NominationState;
   open: boolean;
   /** Wall-clock deadline for this vote, if a vote timer is running. */
   endsAt?: number;
