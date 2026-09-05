@@ -157,8 +157,13 @@ Your own view always lists what you have told whom. Read it before you speak: a 
 cannot remember is a story you will contradict.
 
 **The three for three.** The most useful private move at this table, and the one you should
-default to on day one rather than committing to anything. You name *three* characters you
-could be, to one player, and ask them for three back:
+default to on day one rather than committing to anything.
+
+**Propose it before you give it.** "Three for three?" and wait for a yes. Leading with your
+own three hands a stranger free information and gets you nothing if they shrug — and it is
+the single most common mistake at this table. Ask, agree, then both of you name three.
+
+You name *three* characters you could be, to one player, and ask them for three back:
 
 \`\`\`
 claim { characters: ["chef", "empath", "monk"], to: "Ben" }
@@ -177,6 +182,22 @@ keep straight all week, because you never said which one you were.
 Read what comes back. An offer of three that is answered with three is an exchange. An offer
 answered with silence is information too, and your view flags anyone who never answered
 you — they know you showed them yours.
+
+**And then share what you actually learned.** A three for three is only the handshake. The
+thing worth trading is your *information*: the number you were given, the name you were
+shown, the alignment you read. A table where everybody swaps role-hedges all day and nobody
+says what they saw has learned nothing, and that is how good loses games it had the pieces
+to win.
+
+Say which kind of information you have, too, because it changes what your silence means
+later:
+
+- **Once, and never again** — a Chef, a Washerwoman, an Investigator, a Clockmaker. Your
+  number arrived on the first night and there will be no more. Say so, or people will keep
+  waiting for an update that is never coming and read the silence as evasion.
+- **Every night** — an Empath, a Fortune Teller, a Roofwalker. You are worth killing, so
+  think hard about when to reveal; but a nightly role that goes quiet for two days has told
+  the table something whether it meant to or not.
 
 Hedges never publicly contest each other, because "I might be the Chef" contradicts nobody.
 Only a single named character is a commitment, and only commitments collide.
@@ -268,6 +289,16 @@ const RULES = `## What the server holds you to
   aimed it at, and the Storyteller is held to ruling on it. Saying it in \`say\` and hoping
   they notice is how an ability gets lost in an argument. Night abilities still go
   privately with \`message_storyteller\`.
+- **A nomination is a test, not only an accusation.** The clearest case is a Virgin: the
+  first Townsfolk to nominate one dies on the spot, so nominating a claimed Virgin is how a
+  Townsfolk *proves themselves* — you die, in public, and everyone watching learns you were
+  a real Townsfolk and that they were a real Virgin. It costs your life and buys the town two
+  confirmed facts, which on the right day is cheap. Surviving the nomination is information
+  too, and worse for you: it says you are not a Townsfolk, so an Outsider should think twice
+  and evil should think about whether being *seen* to die there is worth more than living. A
+  Spy who nominates the Virgin, registers as a Townsfolk and dies has bought their Demon a
+  posthumously confirmed ally. Treating a claimed Virgin as untouchable is the one thing
+  nobody should do — it wastes the most testable character on the script.
 - **You may nominate a dead player.** It sounds pointless and it is not. Some demons do not
   die the first time they are killed and go on walking around registering as dead — if the
   game has not ended, something is still alive that should not be, and a corpse is the one
@@ -606,6 +637,25 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     'The rule of thumb: **the game is played now, the record is written after.** If a sentence',
     'would be better in the recap than in the square, it belongs in the recap, and the only',
     'reason to say it out loud today is that you want to be admired today.',
+    '',
+    '## Read the script before the first night, and find the failure',
+    '',
+    'Before you wake anybody, look at the characters you have actually put in play and ask',
+    'what shape this game breaks in. Not who wins — how it goes *wrong*. A town with two',
+    'once-only information roles and no recurring one has nothing after day two. A Saint plus',
+    'a nervous town is a one-vote loss waiting to happen. An evil pair who both register',
+    'falsely leaves good with no verifiable anything. Name the failure to yourself first, and',
+    'then you will recognise it on day three instead of after the game.',
+    '',
+    '## Never shorten an ability when you wake someone',
+    '',
+    'The wake prompt is what a player acts on. If you paraphrase their character and leave',
+    'half of it out, you have silently removed that half from the game — they will not use',
+    'what you did not mention, even when their own briefing carries the full text. Read the',
+    'ability off the sheet and give it to them whole, especially the clause that sounds like a',
+    'footnote. **The Imp may kill itself, and a Minion becomes the Imp** — a demon that knows',
+    'that has an escape hatch and a sacrifice play; a demon told only "choose a player, they',
+    'die" has neither, and will never ask.',
     '',
     '## Giving information',
     '',
