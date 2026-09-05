@@ -32,6 +32,19 @@ export interface EventPayloads {
   'st.sleep': { seatId: string };
   'st.info': { seatId: string; text: string };
   'st.grimoire': { seatId: string; change: string };
+  /** A character that sees the grimoire — the Spy, the Widow — gets a snapshot. */
+  'st.grimoire.shown': {
+    seatId: string;
+    seats: {
+      index: number;
+      name: string;
+      characterName: string | null;
+      team: string | null;
+      alignment: string | null;
+      alive: boolean;
+      reminders: string[];
+    }[];
+  };
 
   'player.died': { seatId: string; name: string; cause: string };
   'player.revived': { seatId: string; name: string };

@@ -154,7 +154,7 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by 85 tests: lobby → night → day → whispers → nominations →
+Working end to end and covered by 90 tests: lobby → night → day → whispers → nominations →
 votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
 per-seat briefings, addressed claims, private notes, phase and vote clocks, and the chronicle with its
 post-mortem.

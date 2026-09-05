@@ -349,6 +349,32 @@ describe('views', () => {
   });
 });
 
+describe('showing the grimoire', () => {
+  it('sends the whole thing to one player and nobody else', () => {
+    const t = table(['Ana', 'Ben', 'Cal'], { Ana: 'thief', Ben: 'smith', Cal: 'wraith' });
+    expectOk(t.game.stAddReminder(t.st.id, t.byName('Ben').id, 'Poisoned'));
+    expectOk(t.game.stShowGrimoire(t.st.id, t.byName('Ana').id));
+
+    const shown = t.game.log.find((e) => e.type === 'st.grimoire.shown');
+    assert.ok(shown);
+    assert.equal(canSee(shown, { kind: 'seat', seatId: t.byName('Ana').id }), true);
+    assert.equal(canSee(shown, { kind: 'seat', seatId: t.byName('Ben').id }), false);
+    assert.equal(canSee(shown, { kind: 'spectator' }), false);
+
+    const text = describeEvent(t.game, shown);
+    assert.match(text, /3\. Cal — Wraith \(evil\)/, 'the Spy reads the demon straight off it');
+    assert.match(text, /2\. Ben — Smith \(good\) · Poisoned/, 'reminder tokens included');
+  });
+
+  it('is a Storyteller power', () => {
+    const t = table(['Ana', 'Ben', 'Cal']);
+    assert.match(
+      expectErr(t.game.stShowGrimoire(t.byName('Ana').id, t.byName('Ben').id)),
+      /only the Storyteller/,
+    );
+  });
+});
+
 describe('ending', () => {
   it('records the winner', () => {
     const t = table(['Ana', 'Ben', 'Cal']);

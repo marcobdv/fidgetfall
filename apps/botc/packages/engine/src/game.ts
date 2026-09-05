@@ -656,6 +656,40 @@ export class Game {
     return ok(undefined);
   }
 
+  /**
+   * Show one player the whole grimoire. Some characters read it directly — a Spy,
+   * a Widow — and the Storyteller should not have to retype it every night.
+   * It is a snapshot: what was true the moment you showed them.
+   */
+  stShowGrimoire(actorSeatId: string, targetSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const to = this.requirePlayer(targetSeatId);
+    if (!to.ok) return to;
+
+    this.emit(
+      'st.grimoire.shown',
+      {
+        seatId: to.value.id,
+        seats: this.players().map((seat) => {
+          const character = this.character(seat.characterId);
+          return {
+            index: seat.index,
+            name: seat.name,
+            characterName: character?.name ?? null,
+            team: character?.team ?? null,
+            alignment: seat.alignment ?? null,
+            alive: seat.alive,
+            reminders: seat.reminders.map((r) => r.label),
+          };
+        }),
+      },
+      toSeats(to.value.id),
+      actorSeatId,
+    );
+    return ok(undefined);
+  }
+
   // ------------------------------------------------------------ grimoire
 
   stAssignCharacter(

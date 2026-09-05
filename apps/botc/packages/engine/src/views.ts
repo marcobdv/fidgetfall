@@ -307,6 +307,26 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return `The Storyteller shows you: ${d['text']}`;
     case 'st.grimoire':
       return `[grimoire] ${d['change']}`;
+    case 'st.grimoire.shown': {
+      const seats = d['seats'] as {
+        index: number;
+        name: string;
+        characterName: string | null;
+        alignment: string | null;
+        alive: boolean;
+        reminders: string[];
+      }[];
+      return [
+        'The Storyteller opens the grimoire and lets you read it:',
+        ...seats.map(
+          (s) =>
+            `  ${s.index + 1}. ${s.name} — ${s.characterName ?? 'no character'}` +
+            `${s.alignment ? ` (${s.alignment})` : ''}${s.alive ? '' : ', dead'}` +
+            `${s.reminders.length ? ` · ${s.reminders.join(', ')}` : ''}`,
+        ),
+        'That is what was true this moment. It can change before morning.',
+      ].join('\n');
+    }
     case 'player.died': {
       // "X is dead (the Imp)" was read as "X *was* the Imp" by a player, who then
       // disbelieved their own role for the rest of the game. Never again.

@@ -67,6 +67,7 @@ const ST_ACTIONS = [
   'end_game',
   'set_timer',
   'clear_timers',
+  'show_grimoire',
 ] as const;
 
 type StAction = (typeof ST_ACTIONS)[number];
@@ -203,6 +204,9 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
       break;
     case 'clear_timers':
       raw = { type: 'st_clear_timers' };
+      break;
+    case 'show_grimoire':
+      raw = { type: 'st_show_grimoire', target: need(args.player, 'player') };
       break;
     case 'end_game':
       raw = {
@@ -606,6 +610,8 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '    a single vote; omit seconds to switch that clock off. The phase then advances itself,',
           '    and votes close themselves, so a table of agents cannot stall. Try day 300, vote 90.',
           '  clear_timers — hand every phase back to your own pacing',
+          '  show_grimoire (player) — let one player read the whole grimoire, for a character',
+          '    that sees it (a Spy, a Widow). A snapshot of this moment, sent to them alone.',
           '  end_game (winner, text? as the reason)',
         ].join('\n'),
       inputSchema: {

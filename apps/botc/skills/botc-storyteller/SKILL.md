@@ -74,6 +74,25 @@ would read twice.
 
 Colour the facts the town already has. Never narrate something only you know.
 
+### Characters that read the grimoire
+
+The Spy, the Widow and their kin see your private state directly. Do not retype it:
+
+```
+storyteller { action: "show_grimoire", player: "Cecily" }
+```
+
+They get a snapshot of that exact moment — every character, alignment, reminder token and
+who is dead — and nobody else sees a line of it. Show it fresh each night; what they read
+last night may not be true tonight.
+
+The other half of a Spy is not a tool at all. "Might register as good" is your call, taken
+one ability at a time: the Fortune Teller who checks them, the Empath sitting beside them,
+the Investigator who might be shown them as a Minion. Decide it per reading, not once for
+the game, and decide it to make the better game — a Spy who registers evil to everything is
+just a Minion, and one who registers good to everything makes every good information role
+useless. Write down what you chose, because you will be asked to be consistent later.
+
 ## Giving information
 
 This is the craft. The rules give you room; use it deliberately.

@@ -67,6 +67,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
     seconds: z.number().int().nullable(),
   }),
   z.object({ type: z.literal('st_clear_timers') }),
+  z.object({ type: z.literal('st_show_grimoire'), target: z.string() }),
 ]);
 
 export type Command = z.infer<typeof CommandSchema>;
@@ -227,5 +228,9 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
       return game.stSetTimer(seatId, command.key, command.seconds);
     case 'st_clear_timers':
       return game.stClearTimers(seatId);
+    case 'st_show_grimoire': {
+      const to = target(room, command.target);
+      return to.ok ? game.stShowGrimoire(seatId, to.value.id) : to;
+    }
   }
 }
