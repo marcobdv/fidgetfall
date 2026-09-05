@@ -93,7 +93,7 @@ interface StArgs {
   allowed?: boolean | undefined;
   winner?: 'good' | 'evil' | undefined;
   to_index?: number | undefined;
-  timer?: 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | 'vote' | 'defence' | undefined;
+  timer?: 'night' | 'day' | 'gather' | 'nominations' | 'opening' | 'dusk' | 'vote' | 'defence' | undefined;
   seconds?: number | null | undefined;
 }
 
@@ -778,6 +778,11 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '    and votes close themselves, so a table of agents cannot stall. Try day 300, defence 60,',
           '    vote 90. The defence clock gives the accused a window to answer before hands go up,',
           '    which is what turns a nomination into an argument instead of a formality.',
+          '  set_timer opening — the fuse on the FIRST nomination of the day, shorter than',
+          '    `nominations`: the town gets this long to put up a name, and the moment somebody',
+          '    does, the full nominations clock replaces it. Shorten it a little each day — a',
+          '    town that has named nobody in two minutes on day four is hiding, not thinking.',
+          '    A five-second last call goes out on every phase clock automatically.',
           '  open_voting — cut a defence short and take the vote now',
           '  clear_timers — hand every phase back to your own pacing',
           '  show_grimoire (player) — let one player read the whole grimoire, for a character',
@@ -803,7 +808,7 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         allowed: z.boolean().optional(),
         winner: z.enum(['good', 'evil']).optional(),
         to_index: z.number().int().optional(),
-        timer: z.enum(['night', 'day', 'gather', 'nominations', 'dusk', 'vote', 'defence']).optional(),
+        timer: z.enum(['night', 'day', 'gather', 'nominations', 'opening', 'dusk', 'vote', 'defence']).optional(),
         seconds: z.number().int().nullable().optional().describe('5-3600. Omit to switch that clock off.'),
       },
     },

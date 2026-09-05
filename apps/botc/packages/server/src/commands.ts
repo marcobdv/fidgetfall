@@ -68,7 +68,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_end_game'), winner: z.enum(['good', 'evil']), reason: z.string() }),
   z.object({
     type: z.literal('st_set_timer'),
-    key: z.enum(['night', 'day', 'gather', 'nominations', 'dusk', 'vote', 'defence']),
+    key: z.enum(['night', 'day', 'gather', 'nominations', 'opening', 'dusk', 'vote', 'defence']),
     seconds: z.number().int().nullable(),
   }),
   z.object({ type: z.literal('st_clear_timers') }),

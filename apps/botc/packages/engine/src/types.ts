@@ -114,6 +114,14 @@ export interface Timers {
   day?: number;
   gather?: number;
   nominations?: number;
+  /**
+   * How long the floor stays open waiting for the FIRST nomination of the day.
+   * Shorter than `nominations`, and it only governs the silence: once somebody
+   * puts a name up, the full nominations clock takes over. Storytellers shorten
+   * this a little every day, because a town that has not named anyone in two
+   * minutes on day four is not thinking, it is hiding.
+   */
+  opening?: number;
   dusk?: number;
   /** How long a single nomination stays open for voting. */
   vote?: number;
@@ -206,6 +214,8 @@ export interface GameState {
   timers: Timers;
   /** Wall-clock deadline for the current phase, if one is running. */
   phaseEndsAt?: number;
+  /** Set once the five-second call has gone out, so it is only said once. */
+  lastCallAt?: number;
   /** viewer seat id -> target seat id -> that viewer's private note. */
   notes: Map<string, Map<string, SeatNote>>;
   /** Private conversations currently standing apart from the square. */

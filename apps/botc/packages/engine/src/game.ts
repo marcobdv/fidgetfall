@@ -55,6 +55,8 @@ const MAX_CLAIMED = 5;
 const MAX_HUDDLE = 4;
 /** An abandoned conversation is swept up rather than trapping everyone in it. */
 const CONVERSATION_IDLE_MS = 120_000;
+/** The five-second call, so a phase never simply vanishes mid-sentence. */
+const LAST_CALL_MS = 5_000;
 
 const defaultRestrictions = (): Restrictions => ({ whisper: true, nominate: true, vote: true });
 
@@ -1238,7 +1240,16 @@ export class Game {
   }
 
   private startPhaseClock(phase: Phase): void {
-    const seconds = phase === 'over' || phase === 'lobby' ? undefined : this.state.timers[phase as TimerKey];
+    this.state.lastCallAt = undefined;
+    // The floor opens on a short fuse: the town gets `opening` seconds to put up
+    // a first name, not the whole nominations phase. The moment somebody does,
+    // the full clock replaces it — see nominate().
+    const seconds =
+      phase === 'over' || phase === 'lobby'
+        ? undefined
+        : phase === 'nominations'
+          ? (this.state.timers.opening ?? this.state.timers.nominations)
+          : this.state.timers[phase as TimerKey];
     if (!seconds) {
       this.state.phaseEndsAt = undefined;
       return;
@@ -1286,6 +1297,23 @@ export class Game {
     // expire during a defence and close the vote before a single hand goes up,
     // which loses the town a nomination it had every right to resolve.
     if (this.activeNomination()?.open) return changed;
+
+    // "Five seconds." Said once, out loud, so nobody loses a day to not noticing.
+    if (
+      this.state.phaseEndsAt !== undefined &&
+      this.state.lastCallAt === undefined &&
+      this.state.phaseEndsAt - now <= LAST_CALL_MS &&
+      now < this.state.phaseEndsAt
+    ) {
+      this.state.lastCallAt = now;
+      const left = Math.max(1, Math.ceil((this.state.phaseEndsAt - now) / 1000));
+      this.emit(
+        'timer.lastcall',
+        { key: this.state.phase, seconds: left, phase: this.state.phase },
+        PUBLIC,
+      );
+      changed = true;
+    }
 
     if (this.state.phaseEndsAt !== undefined && now >= this.state.phaseEndsAt) {
       const from = this.state.phase;
@@ -1470,6 +1498,14 @@ export class Game {
       votes: [],
     };
     this.state.nominations.push(nomination);
+    // The opening fuse has done its job; the day now runs on the full clock.
+    const opening = this.state.timers.opening;
+    const full = this.state.timers.nominations;
+    if (opening && full && this.state.nominations.filter((n) => n.day === this.state.day).length === 1) {
+      this.state.phaseEndsAt = this.now() + full * 1000;
+      this.state.lastCallAt = undefined;
+      this.emit('timer.started', { key: 'nominations', seconds: full, endsAt: this.state.phaseEndsAt }, PUBLIC);
+    }
     this.state.activeNominationId = nomination.id;
     from.value.hasNominatedToday = true;
     to.value.hasBeenNominatedToday = true;

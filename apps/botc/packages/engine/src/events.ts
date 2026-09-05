@@ -62,6 +62,8 @@ export interface EventPayloads {
       alive: boolean;
     }[];
   };
+  /** Public: the last few seconds of a phase, called once. */
+  'timer.lastcall': { key: string; seconds: number; phase: string };
   'conversation.opened': { conversationId: string; seatIds: string[]; names: string[] };
   'conversation.closed': { conversationId: string; seatIds: string[]; names: string[]; reason: string };
   'chat.storyteller': { fromSeatId: string; toSeatId: string; text: string; fromStoryteller: boolean };

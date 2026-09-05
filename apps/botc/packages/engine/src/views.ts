@@ -420,6 +420,8 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       });
       return ['THE ROLL CALL — everyone, out loud:', ...rows].join('\n');
     }
+    case 'timer.lastcall':
+      return `${d['seconds']} seconds. Last call on ${d['phase']}.`;
     case 'conversation.opened': {
       const who = (d['names'] as string[]) ?? [];
       if (who.length <= 2) return `${who[0]} and ${who[1]} stepped aside to talk privately.`;

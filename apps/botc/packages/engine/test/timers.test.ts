@@ -55,8 +55,13 @@ describe('the clock', () => {
   it('advances the phase by itself when it runs out', () => {
     const t = clocked(['Ana', 'Ben', 'Cal']);
     expectOk(t.game.stSetTimer(t.st, 'night', 60));
-    t.advance(59);
-    assert.equal(t.game.tick(t.now()), false);
+    t.advance(50);
+    assert.equal(t.game.tick(t.now()), false, 'nothing happens in the middle of a phase');
+    assert.equal(t.game.state.phase, 'night');
+    // Inside the last five seconds the call goes out, which is a change — but the
+    // phase is still the phase until the clock actually runs out.
+    t.advance(9);
+    assert.equal(t.game.tick(t.now()), true);
     assert.equal(t.game.state.phase, 'night');
     t.advance(2);
     assert.equal(t.game.tick(t.now()), true);
