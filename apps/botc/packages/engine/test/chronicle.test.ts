@@ -116,9 +116,9 @@ describe('the chronicle', () => {
     // The game is over; rewind to a day so claims can be made, then re-end it.
     const live = table(['Ana', 'Ben', 'Cal'], { Ana: 'wraith', Ben: 'seer', Cal: 'baker' });
     expectOk(live.game.stAdvancePhase(live.st.id));
-    expectOk(live.game.claim(live.byName('Ana').id, 'seer', live.byName('Ben').id));
-    expectOk(live.game.claim(live.byName('Ana').id, 'baker', live.byName('Cal').id));
-    expectOk(live.game.claim(live.byName('Ben').id, 'seer', null));
+    expectOk(live.game.claim(live.byName('Ana').id, ['seer'], live.byName('Ben').id));
+    expectOk(live.game.claim(live.byName('Ana').id, ['baker'], live.byName('Cal').id));
+    expectOk(live.game.claim(live.byName('Ben').id, ['seer'], null));
     expectOk(live.game.stEndGame(live.st.id, 'evil', 'The Wraith survived.'));
 
     const story = writeChronicle(live.game, { kind: 'seat', seatId: live.byName('Cal').id });

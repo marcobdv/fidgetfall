@@ -156,6 +156,31 @@ useful thing an evil player can do, and the single most useful habit a good town
 Your own view always lists what you have told whom. Read it before you speak: a story you
 cannot remember is a story you will contradict.
 
+**The three for three.** The most useful private move at this table, and the one you should
+default to on day one rather than committing to anything. You name *three* characters you
+could be, to one player, and ask them for three back:
+
+\`\`\`
+claim { characters: ["chef", "empath", "monk"], to: "Ben" }
+\`\`\`
+
+Neither of you has committed to anything, so neither of you has handed the Demon a target or
+handed the town a claim to contest. But you now hold three of Ben's candidates, he holds
+three of yours, and both of you can take those lists to a third player and start crossing
+things off. Two players who each offer three and find no overlap have learned something.
+Two who find the same character in both lists have learned more.
+
+It is also the best lie on the board. Bury one falsehood between two truths and it is very
+hard to isolate — and if you are evil, three characters you are *not* is a story you can
+keep straight all week, because you never said which one you were.
+
+Read what comes back. An offer of three that is answered with three is an exchange. An offer
+answered with silence is information too, and your view flags anyone who never answered
+you — they know you showed them yours.
+
+Hedges never publicly contest each other, because "I might be the Chef" contradicts nobody.
+Only a single named character is a commitment, and only commitments collide.
+
 **When someone tells you something in private, ask:**
 
 - **Is it on the script?** A character nobody could be is a lie you catch for free.
@@ -286,6 +311,16 @@ function scriptSheet(view: GameView): string {
     'table — use it to judge whether a claim is even possible, and to pick a bluff that is not',
     'contradicted by someone alive.',
   );
+  if (view.script.characters.some((c) => c.team === 'traveller')) {
+    lines.push(
+      '',
+      'The TRAVELLERS at the end are not part of this script — they are a common pool the',
+      'Storyteller may seat on top of any script, and usually only for someone joining a game',
+      'already in progress. A traveller is **public**: everyone can see who the traveller is and',
+      'exactly what character they are, so there is no point claiming one and no point bluffing',
+      'as one. They are exiled rather than executed, on a majority of the whole table.',
+    );
+  }
   for (const [team, names] of byTeam) {
     lines.push('', `**${team.toUpperCase()}** (${names.length})`);
     for (const name of names) lines.push(`- ${name}`);

@@ -128,7 +128,13 @@ export interface Claim {
   fromSeatId: string;
   /** null means it was said out loud to everyone. */
   toSeatId: string | null;
-  characterId: string;
+  /**
+   * One character is a commitment: "I am the Chef". Several is a hedge — the
+   * "three for three" players actually make at table: *I am one of these three,
+   * now show me yours*. Neither side commits, both get something to cross-check,
+   * and an evil player can seed one lie among two truths.
+   */
+  characterIds: string[];
   day: number;
   at: number;
 }

@@ -1,6 +1,14 @@
 import { describeEvent, type AnyEvent, type GameView, type SeatView } from '@botc/engine';
 import type { Room } from './rooms.js';
 
+/** "the Chef", or "one of the Chef, the Empath or the Monk" for a hedged claim. */
+function claimPhrase(characters: { name: string }[]): string {
+  const names = characters.map((c) => `the ${c.name}`);
+  if (names.length <= 1) return names[0] ?? '—';
+  return `one of ${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
+
+
 /** "4m 10s" — how long is left, in words an agent can act on. */
 export function clock(seconds: number): string {
   if (seconds <= 0) return 'no time';
@@ -19,17 +27,21 @@ const seatLine = (seat: SeatView, youSeatId: string | undefined): string => {
   if (seat.hasNominatedToday) bits.push('has nominated today');
   if (seat.hasBeenNominatedToday) bits.push('has been nominated today');
   if (!seat.connected) bits.push('disconnected');
-  if (seat.publicClaim) {
-    bits.push(`publicly claims ${seat.publicClaim.name}${seat.claimContested ? ' (CONTESTED)' : ''}`);
-  }
-  if (seat.claimToYou) {
+  if (seat.publicClaim?.length) {
     bits.push(
-      `told YOU they are the ${seat.claimToYou.name}${seat.claimToYouDiffers ? ' — which is NOT what they told the town' : ''}`,
+      `publicly claims ${claimPhrase(seat.publicClaim)}${seat.claimContested ? ' (CONTESTED)' : ''}`,
     );
+  }
+  if (seat.claimToYou?.length) {
+    bits.push(
+      `told YOU they are ${claimPhrase(seat.claimToYou)}${seat.claimToYouDiffers ? ' — which is NOT what they told the town' : ''}`,
+    );
+  } else if (seat.claimUnanswered) {
+    bits.push('you made them an offer they have not answered');
   }
   if (seat.claimsMade?.length) {
     bits.push(
-      `stories: ${seat.claimsMade.map((c) => `${c.character.name} to ${c.toName ?? 'the town'}`).join('; ')}`,
+      `stories: ${seat.claimsMade.map((c) => `${claimPhrase(c.characters)} to ${c.toName ?? 'the town'}`).join('; ')}`,
     );
   }
   if (seat.character)
@@ -110,7 +122,7 @@ export function renderView(view: GameView): string {
     lines.push('', 'Said out loud to everyone:');
     for (const seat of publicClaims) {
       lines.push(
-        `  ${seat.name} claims the ${seat.publicClaim?.name}${seat.claimContested ? ' — CONTESTED, someone here is lying' : ''}`,
+        `  ${seat.name} claims ${claimPhrase(seat.publicClaim ?? [])}${seat.claimContested ? ' — CONTESTED, someone here is lying' : ''}`,
       );
     }
   }
@@ -120,7 +132,7 @@ export function renderView(view: GameView): string {
     lines.push('', 'Told to you in private (nobody else knows they said this):');
     for (const seat of toldYou) {
       lines.push(
-        `  ${seat.name} told you they are the ${seat.claimToYou?.name}${seat.claimToYouDiffers ? ' — but they told the town something else' : ''}`,
+        `  ${seat.name} told you they are ${claimPhrase(seat.claimToYou ?? [])}${seat.claimToYouDiffers ? ' — but they told the town something else' : ''}`,
       );
     }
   }
@@ -128,7 +140,7 @@ export function renderView(view: GameView): string {
   if (view.you?.claimsMade?.length) {
     lines.push('', 'What YOU have told people (keep your story straight):');
     for (const made of view.you.claimsMade) {
-      lines.push(`  ${made.character.name} — to ${made.toName ?? 'the whole town'}`);
+      lines.push(`  ${claimPhrase(made.characters)} — to ${made.toName ?? 'the whole town'}`);
     }
   }
 
@@ -151,7 +163,7 @@ export function renderView(view: GameView): string {
       // You are about to vote on a life; you should not have to remember what
       // they said they were.
       claimed
-        ? `${nominee?.name} claims to be the ${claimed.name}${nominee?.publicClaim ? '' : ' (told to you privately)'}. Weigh what being wrong costs before you vote.`
+        ? `${nominee?.name} claims to be ${claimPhrase(claimed)}${nominee?.publicClaim ? '' : ' (told to you privately)'}. Weigh what being wrong costs before you vote.`
         : `${nominee?.name} has claimed nothing.`,
       `Votes so far: ${nomination.yesCount} yes, threshold ${nomination.threshold}.`,
     );

@@ -464,27 +464,49 @@ export function buildMcpServer(deps: McpDeps): McpServer {
     {
       title: 'Claim a character',
       description:
-        'Tell someone what character you are — one player in private, or the whole town. Nothing verifies it, and nothing stops you telling two people two different things; nobody can see what you said to anyone else, so a story only unravels if they compare notes. A public claim goes on the square for everyone, and everyone is told when two living players publicly claim the same character. Your own look always lists what you have told whom.',
+        [
+          'Tell someone what character you are — one player in private, or the whole town.',
+          '',
+          'Name ONE character to commit: "I am the Chef". Name TWO OR THREE to hedge: "I am one',
+          'of these". The hedge is the move players call a THREE FOR THREE — you offer three',
+          'characters you could be, privately, and ask for three back. Neither of you commits,',
+          'both of you get something to cross-check against everyone else, and an evil player',
+          'can bury one lie between two truths. It is the cheapest way to start trusting',
+          'someone, and it is how most private information actually moves at a table.',
+          '',
+          'Nothing verifies any of it. Nothing stops you telling two people two different',
+          'things — nobody can see what you said to anyone else, so a story only unravels if',
+          'they compare notes out loud. A public claim goes on the square for everyone, and',
+          'everyone is told when two living players publicly commit to the same character',
+          '(hedges never contest each other — "I might be the Chef" contradicts nothing).',
+          '',
+          'Your own look always lists what you have told whom, and flags anyone you made an',
+          'offer to who never answered it.',
+        ].join('\n'),
       inputSchema: {
         seat_token: SEAT_TOKEN,
         character: z
           .string()
           .nullable()
           .optional()
-          .describe('A character id from read_script. Omit or null to retract the claim to that audience.'),
+          .describe('A single character id from read_script — a straight commitment. Omit or null to retract your claim to that audience.'),
+        characters: z
+          .array(z.string())
+          .optional()
+          .describe('Two or three character ids to hedge: "I am one of these." This is the three-for-three offer. Takes precedence over `character`.'),
         to: z
           .string()
           .nullable()
           .optional()
-          .describe("A player's name or seat number to say it to them alone. Omit to say it out loud to the whole town."),
+          .describe("A player's name or seat number to say it to them alone — which is where a three-for-three belongs. Omit to say it out loud to the whole town."),
       },
     },
-    async ({ seat_token, character, to }) =>
-      run(
-        seat_token,
-        { type: 'claim', character: character ?? null, to: to ?? null },
-        (room, seatId) => renderView(room.view(seatId)),
-      ),
+    async ({ seat_token, character, characters, to }) => {
+      const named = characters?.length ? characters : character ? [character] : null;
+      return run(seat_token, { type: 'claim', characters: named, to: to ?? null }, (room, seatId) =>
+        renderView(room.view(seatId)),
+      );
+    },
   );
 
   server.registerTool(

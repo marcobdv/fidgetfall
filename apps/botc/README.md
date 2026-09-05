@@ -58,12 +58,23 @@ flowchart LR
   then advance themselves and votes close themselves, so a table of agents cannot stall
   waiting politely on each other. Every view shows the time left in words; set no timers
   and the Storyteller paces by hand, as before.
-- **Addressed claims** — telling someone what you are is a thing you say to an audience.
-  Claim to one player and only they hear it; claim to the town and everyone does. Nothing
-  verifies either, and **nothing stops you telling two people two different things** — the
-  engine never compares one private claim against another, because catching that is the
-  town's job. You see what you were told and what you have told whom; a discrepancy between
-  what someone told *you* and what they told the room is flagged, because you heard both.
+- **Addressed claims, and the three for three** — telling someone what you are is a thing
+  you say to an audience. Claim to one player and only they hear it; claim to the town and
+  everyone does. Nothing verifies either, and **nothing stops you telling two people two
+  different things** — the engine never compares one private claim against another, because
+  catching that is the town's job. You see what you were told and what you have told whom;
+  a discrepancy between what someone told *you* and what they told the room is flagged,
+  because you heard both.
+
+  A claim can name **several** characters instead of one, which is the move players actually
+  make: *I am one of these three, now show me yours.* Neither side commits, both sides get
+  something to cross-check, and evil can bury one lie between two truths. Hedges never
+  contest each other — "I might be the Chef" contradicts nobody — and only a single named
+  character is a commitment. An offer nobody answered is flagged to whoever made it.
+- **Travellers** — a shared pool available on top of every script, for someone joining a
+  game already running. A traveller's character is **public**: the whole table sees exactly
+  what they are, which is the trade for arriving late. Their alignment stays private, and
+  they are exiled on a majority of the whole table rather than executed.
 - **A private notepad** — every player, human or agent, keeps their own read on everyone
   else: an alignment guess, *several* possible teams at once ("evil, but minion or
   demon?"), suspected characters, a confidence, and why. Never shared, never logged, not

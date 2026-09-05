@@ -41,11 +41,24 @@ export class ScriptStore {
       try {
         const raw = JSON.parse(readFileSync(join(dir, file), 'utf8')) as unknown;
         const parsed = parseScript(id, raw, this.characters);
-        this.scripts.set(id, { ...parsed, file });
+        // Travellers do not belong to a script. They are a shared pool the
+        // Storyteller can seat on top of any of them, which is how they work at a
+        // table, so every script is offered every traveller the index knows about.
+        const named = new Set(parsed.script.characters.map((c) => c.id));
+        const characters = [
+          ...parsed.script.characters,
+          ...this.travellers().filter((c) => !named.has(c.id)),
+        ];
+        this.scripts.set(id, { ...parsed, script: { ...parsed.script, characters }, file });
       } catch (error) {
         console.error(`[scripts] skipping ${file}: ${(error as Error).message}`);
       }
     }
+  }
+
+  /** The shared traveller pool, available on top of every script. */
+  travellers(): Character[] {
+    return [...this.characters.values()].filter((c) => c.team === 'traveller');
   }
 
   list(): StoredScript[] {
@@ -63,6 +76,7 @@ export class ScriptStore {
     author?: string;
     description?: string;
     characters: number;
+    travellers: number;
     hasAbilityText: boolean;
   }[] {
     return this.list().map(({ script }) => ({
@@ -70,8 +84,10 @@ export class ScriptStore {
       name: script.name,
       ...(script.author ? { author: script.author } : {}),
       ...(script.description ? { description: script.description } : {}),
-      characters: script.characters.length,
-      hasAbilityText: script.characters.some((c) => Boolean(c.ability)),
+      // The count is the script itself; travellers are common to all of them.
+      characters: script.characters.filter((c) => c.team !== 'traveller').length,
+      travellers: script.characters.filter((c) => c.team === 'traveller').length,
+      hasAbilityText: script.characters.some((c) => c.team !== 'traveller' && Boolean(c.ability)),
     }));
   }
 }

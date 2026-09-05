@@ -55,9 +55,10 @@ export interface EventPayloads {
     /** null when said to the whole town. */
     toSeatId: string | null;
     toName: string | null;
-    characterId: string | null;
-    characterName: string | null;
-    /** Only for public claims: others already publicly claiming the same character. */
+    /** Empty when the claim is being taken back; several when it is a hedge. */
+    characterIds: string[];
+    characterNames: string[];
+    /** Only for a public commitment: others already publicly claiming that character. */
     contestedBy: string[];
   };
   /** The town sees two people step aside; it does not hear what was claimed. */

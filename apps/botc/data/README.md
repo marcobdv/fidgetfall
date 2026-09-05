@@ -47,3 +47,15 @@ cp ~/Downloads/roles.json apps/botc/data/characters/roles.local.json
 ```
 
 Anything the merge doesn't cover is simply absent from the UI; it is never invented.
+
+## Travellers
+
+`base-editions.json` also carries the fifteen base-edition travellers (name and team
+only, like everything else in it). Travellers are **not** part of any script — the store
+offers the whole pool on top of every script, including the original ones, because that
+is how they work at a table: the Storyteller seats one for a player arriving mid-game.
+
+They have no ability text here for the same copyright reason as everything else, so
+supply it the same way, through `BOTC_ROLES_FILE` or `roles.local.json`. A traveller
+with no ability text still works — their character is public, so the table can simply
+ask the Storyteller what it does.

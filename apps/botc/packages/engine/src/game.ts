@@ -47,6 +47,8 @@ export interface GameOptions {
 const MIN_PLAYERS = 3;
 const RECOMMENDED_MIN_PLAYERS = 5;
 const MAX_MESSAGE = 2000;
+/** A "three for three" is three. Past a handful a hedge stops being information. */
+const MAX_CLAIMED = 5;
 
 const defaultRestrictions = (): Restrictions => ({ whisper: true, nominate: true, vote: true });
 
@@ -494,7 +496,11 @@ export class Game {
    * shows each player only what was said *to* them, and never compares one
    * private claim against another.
    */
-  claim(actorSeatId: string, characterId: string | null, toSeatId: string | null): Result<void> {
+  claim(
+    actorSeatId: string,
+    characterIds: string[] | null,
+    toSeatId: string | null,
+  ): Result<void> {
     const from = this.requirePlayer(actorSeatId);
     if (!from.ok) return from;
     if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
@@ -510,7 +516,14 @@ export class Game {
       to = found.value;
     }
 
-    if (characterId === null) {
+    if (characterIds !== null && characterIds.length === 0) {
+      return err('name at least one character, or omit it to take your claim back');
+    }
+    if (characterIds !== null && characterIds.length > MAX_CLAIMED) {
+      return err(`name at most ${MAX_CLAIMED} characters — a hedge that wide says nothing`);
+    }
+
+    if (characterIds === null) {
       const before = this.state.claims.length;
       this.state.claims = this.state.claims.filter(
         (c) => !(c.fromSeatId === from.value.id && c.toSeatId === (to?.id ?? null)),
@@ -523,8 +536,8 @@ export class Game {
           name: from.value.name,
           toSeatId: to?.id ?? null,
           toName: to?.name ?? null,
-          characterId: null,
-          characterName: null,
+          characterIds: [],
+          characterNames: [],
           contestedBy: [],
         },
         to ? toSeats(from.value.id, to.id) : PUBLIC,
@@ -533,8 +546,11 @@ export class Game {
       return ok(undefined);
     }
 
-    const character = this.character(characterId);
-    if (!character) return err(`"${characterId}" is not on this script`);
+    const unique = [...new Set(characterIds)];
+    const characters = unique.map((id) => this.character(id));
+    const missing = unique.find((id, i) => !characters[i]);
+    if (missing) return err(`"${missing}" is not on this script`);
+    const named = characters as Character[];
 
     // One standing claim per audience; a new one replaces it.
     this.state.claims = this.state.claims.filter(
@@ -544,21 +560,25 @@ export class Game {
       id: this.makeId('claim'),
       fromSeatId: from.value.id,
       toSeatId: to?.id ?? null,
-      characterId: character.id,
+      characterIds: named.map((c) => c.id),
       day: this.state.day,
       at: this.now(),
     };
     this.state.claims.push(claim);
 
-    // Only a public claim can be publicly contested; private ones are private.
-    const contestedBy = to
-      ? []
-      : this.players()
-          .filter(
-            (s) =>
-              s.id !== from.value.id && s.alive && this.publicClaim(s.id)?.characterId === character.id,
-          )
-          .map((s) => s.name);
+    // Only a public claim can be publicly contested; private ones are private. And
+    // only a commitment can be contested — two players who each say "I am one of
+    // these three" have not contradicted each other, however much they overlap.
+    const contestedBy =
+      to || named.length !== 1
+        ? []
+        : this.players()
+            .filter((s) => {
+              if (s.id === from.value.id || !s.alive) return false;
+              const theirs = this.publicClaim(s.id);
+              return theirs?.characterIds.length === 1 && theirs.characterIds[0] === named[0]?.id;
+            })
+            .map((s) => s.name);
 
     this.emit(
       'player.claim',
@@ -567,8 +587,8 @@ export class Game {
         name: from.value.name,
         toSeatId: to?.id ?? null,
         toName: to?.name ?? null,
-        characterId: character.id,
-        characterName: character.name,
+        characterIds: named.map((c) => c.id),
+        characterNames: named.map((c) => c.name),
         contestedBy,
       },
       to ? toSeats(from.value.id, to.id) : PUBLIC,
@@ -600,16 +620,33 @@ export class Game {
   claimsMadeBy(seatId: string): Claim[] {
     return this.state.claims.filter((c) => c.fromSeatId === seatId);
   }
+  /**
+   * The two halves of a "three for three": what you offered this player, and what
+   * they offered back. An offer that was never answered is information too — you
+   * showed them yours and got nothing, and they know you know.
+   */
+  exchange(seatId: string, otherSeatId: string): { offered?: Claim; answered?: Claim } {
+    const offered = this.state.claims.find(
+      (c) => c.fromSeatId === seatId && c.toSeatId === otherSeatId,
+    );
+    const answered = this.state.claims.find(
+      (c) => c.fromSeatId === otherSeatId && c.toSeatId === seatId,
+    );
+    return { ...(offered ? { offered } : {}), ...(answered ? { answered } : {}) };
+  }
+
 
   /** Characters more than one living player is claiming *in public*. */
   contestedClaims(): { characterId: string; characterName: string; seatIds: string[] }[] {
     const byCharacter = new Map<string, string[]>();
     for (const seat of this.players()) {
       const claim = seat.alive ? this.publicClaim(seat.id) : undefined;
-      if (!claim) continue;
-      const list = byCharacter.get(claim.characterId) ?? [];
+      // A hedge contests nothing — "I am one of three" is not a claim on any of them.
+      if (!claim || claim.characterIds.length !== 1) continue;
+      const characterId = claim.characterIds[0] as string;
+      const list = byCharacter.get(characterId) ?? [];
       list.push(seat.id);
-      byCharacter.set(claim.characterId, list);
+      byCharacter.set(characterId, list);
     }
     return [...byCharacter.entries()]
       .filter(([, seatIds]) => seatIds.length > 1)

@@ -20,7 +20,8 @@ export const CommandSchema = z.discriminatedUnion('type', [
    */
   z.object({
     type: z.literal('claim'),
-    character: z.string().nullable(),
+    /** Several is a hedge — "I am one of these". Null takes the claim back. */
+    characters: z.array(z.string()).nullable(),
     to: z.string().nullable().optional(),
   }),
 
@@ -127,9 +128,9 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
     case 'leave':
       return game.leave(seatId);
     case 'claim': {
-      if (!command.to) return game.claim(seatId, command.character, null);
+      if (!command.to) return game.claim(seatId, command.characters, null);
       const to = target(room, command.to);
-      return to.ok ? game.claim(seatId, command.character, to.value.id) : to;
+      return to.ok ? game.claim(seatId, command.characters, to.value.id) : to;
     }
 
     case 'note_set': {

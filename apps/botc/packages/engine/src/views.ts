@@ -24,16 +24,21 @@ export interface SeatView {
   hasNominatedToday: boolean;
   hasBeenNominatedToday: boolean;
   onBlock: boolean;
-  /** What they have told the whole town they are. Public, and possibly a lie. */
-  publicClaim?: Character;
-  /** True when another living player publicly claims the same character. */
+  /**
+   * What they have told the whole town they are. Public, possibly a lie, and
+   * possibly a hedge — several characters means "I am one of these".
+   */
+  publicClaim?: Character[];
+  /** True when another living player publicly commits to the same single character. */
   claimContested?: boolean;
   /** What they told *you*, privately. Nobody else can see this. */
-  claimToYou?: Character;
+  claimToYou?: Character[];
   /** They told you one thing and the town another. Only you know. */
   claimToYouDiffers?: boolean;
+  /** You offered them yours and they have not offered anything back. */
+  claimUnanswered?: boolean;
   /** Storyteller only: every claim this player has made, and to whom. */
-  claimsMade?: { toName: string | null; character: Character }[];
+  claimsMade?: { toName: string | null; characters: Character[] }[];
   /** Present only for your own seat, or every seat when you are the Storyteller. */
   character?: Character;
   /**
@@ -95,7 +100,7 @@ export interface GameView {
         alignment?: Alignment;
         restrictions?: Restrictions;
         /** Every claim you have made, and to whom. `toName: null` means aloud. */
-        claimsMade?: { toName: string | null; character: Character }[];
+        claimsMade?: { toName: string | null; characters: Character[] }[];
       }
     | null;
   seats: SeatView[];
@@ -151,18 +156,28 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         hasBeenNominatedToday: seat.hasBeenNominatedToday,
         onBlock: state.onBlockSeatId === seat.id,
       };
-      const publicClaim = game.character(game.publicClaim(seat.id)?.characterId);
-      if (publicClaim) {
+      const characters = (ids: string[]): Character[] =>
+        ids.map((id) => game.character(id)).filter((c): c is Character => Boolean(c));
+      const publicClaim = characters(game.publicClaim(seat.id)?.characterIds ?? []);
+      if (publicClaim.length) {
         view.publicClaim = publicClaim;
-        if (contested.has(publicClaim.id)) view.claimContested = true;
+        if (publicClaim.length === 1 && contested.has(publicClaim[0]!.id)) {
+          view.claimContested = true;
+        }
       }
       // What they told you is yours alone; what they told anyone else is not.
-      if (notepad) {
-        const toMe = game.claimsMadeTo(notepad).find((c) => c.fromSeatId === seat.id);
-        const told = game.character(toMe?.characterId);
-        if (told) {
+      if (notepad && notepad !== seat.id) {
+        const { offered, answered } = game.exchange(notepad, seat.id);
+        const told = characters(answered?.characterIds ?? []);
+        if (told.length) {
           view.claimToYou = told;
-          if (publicClaim && publicClaim.id !== told.id) view.claimToYouDiffers = true;
+          // Only a straight contradiction counts: a hedge that includes what they
+          // told the town has not caught them in anything.
+          if (publicClaim.length && !told.some((t) => publicClaim.some((p) => p.id === t.id))) {
+            view.claimToYouDiffers = true;
+          }
+        } else if (offered) {
+          view.claimUnanswered = true;
         }
       }
       if (isST(viewer)) {
@@ -170,18 +185,21 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         if (made.length) {
           view.claimsMade = made.map((c) => ({
             toName: c.toSeatId ? (game.seat(c.toSeatId)?.name ?? '?') : null,
-            character: game.character(c.characterId) as Character,
+            characters: characters(c.characterIds),
           }));
         }
       }
-      if (isST(viewer) || mine) {
+      // A traveller is public. Everyone at the table knows who they are and what
+      // they do — that is the trade for being allowed to join a game in progress.
+      if (isST(viewer) || mine || seat.isTraveller) {
         // A lied-to player sees only the lie; the Storyteller sees the truth and the lie.
         const truth = game.character(seat.characterId);
         const believed = game.character(seat.believedCharacterId);
         const character = isST(viewer) ? truth : (believed ?? truth);
         if (character) view.character = character;
         if (isST(viewer) && believed) view.believedCharacter = believed;
-        if (seat.alignment) view.alignment = seat.alignment;
+        // Their alignment stays their own; only the Storyteller and they see it.
+        if (seat.alignment && (isST(viewer) || mine)) view.alignment = seat.alignment;
       }
       if (isST(viewer)) {
         view.reminders = seat.reminders;
@@ -225,7 +243,9 @@ export function buildView(game: Game, viewer: Viewer): GameView {
               // story straight — or notice that you have not.
               claimsMade: game.claimsMadeBy(seat.id).map((c) => ({
                 toName: c.toSeatId ? (game.seat(c.toSeatId)?.name ?? '?') : null,
-                character: game.character(c.characterId) as Character,
+                characters: c.characterIds
+                  .map((id) => game.character(id))
+                  .filter((ch): ch is Character => Boolean(ch)),
               })),
             };
           })()
@@ -355,12 +375,22 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return `You are the ${d['characterName']} (${d['team']}).`;
     case 'player.claim': {
       const to = d['toName'] ? ` to ${d['toName']}` : ' to the whole town';
-      if (d['characterId'] === null) return `${d['name']} takes back their claim${to}.`;
+      const names = (d['characterNames'] as string[]) ?? [];
+      if (!names.length) return `${d['name']} takes back their claim${to}.`;
+      // One character is a commitment; several is the three-for-three hedge.
+      const what =
+        names.length === 1
+          ? `the ${names[0]}`
+          : `one of the ${names.slice(0, -1).join(', the ')} or the ${names[names.length - 1]}`;
       const contested = d['contestedBy'] as string[];
-      if (d['toName']) return `${d['name']} tells ${d['toName']} privately: "I am the ${d['characterName']}."`;
+      if (d['toName']) {
+        return names.length === 1
+          ? `${d['name']} tells ${d['toName']} privately: "I am ${what}."`
+          : `${d['name']} offers ${d['toName']} privately: "I am ${what}." — a three for three; they are owed an answer.`;
+      }
       return contested.length
-        ? `${d['name']} claims the ${d['characterName']} to the whole town — so does ${contested.join(', ')}. One of them is lying.`
-        : `${d['name']} claims the ${d['characterName']} to the whole town.`;
+        ? `${d['name']} claims ${what} to the whole town — so does ${contested.join(', ')}. One of them is lying.`
+        : `${d['name']} claims ${what} to the whole town.`;
     }
     case 'player.claim.observed':
       return `${name(d['fromSeatId'] as string)} said something private to ${name(d['toSeatId'] as string)}.`;

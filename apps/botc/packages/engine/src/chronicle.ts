@@ -447,11 +447,14 @@ function postMortem(game: Game): string[] {
     if (!claims.length) continue;
     const truth = game.character(seat.characterId);
     const told = claims.map((c) => {
-      const character = game.character(c.characterId)?.name ?? c.characterId;
+      const names = c.characterIds.map((id) => game.character(id)?.name ?? id);
       const audience = c.toSeatId ? (game.seat(c.toSeatId)?.name ?? '?') : 'the whole town';
-      return `${character} to ${audience}`;
+      // A hedge reads as what it was: "one of X, Y or Z", not three separate lies.
+      const what = names.length > 1 ? `one of ${list(names)}` : (names[0] ?? '—');
+      return `${what} to ${audience}`;
     });
-    const honest = claims.every((c) => c.characterId === seat.characterId);
+    // A hedge is honest if the truth was somewhere inside it.
+    const honest = claims.every((c) => c.characterIds.includes(seat.characterId ?? ''));
     stories.push(
       `- **${seat.name}** was the ${truth?.name ?? 'unassigned'} and said: ${told.join('; ')}${
         honest ? '' : ' — not all of that was true'
