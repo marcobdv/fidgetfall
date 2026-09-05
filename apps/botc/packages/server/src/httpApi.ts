@@ -2,6 +2,8 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { Config } from './config.js';
+import { writeChronicle } from '@botc/engine';
+import { writeBriefing } from './briefing.js';
 import type { RoomManager, Room } from './rooms.js';
 import type { ScriptStore } from './scriptStore.js';
 
@@ -152,6 +154,35 @@ export async function handleApi(
         seatIndex: joined.value.index,
         isStoryteller: false,
       });
+      return true;
+    }
+
+    // The seat's system prompt. `?format=text` returns it raw, ready to paste into
+    // a harness; otherwise JSON for the web client.
+    if (req.method === 'GET' && (path === '/api/briefing' || path === '/api/recap')) {
+      const resolved = rooms.resolve(url.searchParams.get('token'));
+      if (!resolved) {
+        sendJson(res, 401, { error: 'unknown or expired token' });
+        return true;
+      }
+      const body =
+        path === '/api/briefing'
+          ? writeBriefing(resolved.room, resolved.session.seatId)
+          : writeChronicle(
+              resolved.room.game,
+              resolved.room.viewerFor(resolved.session.seatId),
+            );
+      if (url.searchParams.get('format') === 'text') {
+        const payload = Buffer.from(body, 'utf8');
+        res.writeHead(200, {
+          'content-type': 'text/markdown; charset=utf-8',
+          'content-length': payload.length,
+          'cache-control': 'no-store',
+        });
+        res.end(payload);
+        return true;
+      }
+      sendJson(res, 200, { text: body });
       return true;
     }
 

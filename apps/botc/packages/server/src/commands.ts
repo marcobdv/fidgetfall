@@ -15,6 +15,21 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('vote'), vote: z.boolean() }),
   z.object({ type: z.literal('leave') }),
 
+  // Private notes: one player's read on another. Never shared, never logged.
+  z.object({
+    type: z.literal('note_set'),
+    target: z.string(),
+    alignment: z.enum(['good', 'evil', 'unknown']).nullable().optional(),
+    teams: z
+      .array(z.enum(['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled']))
+      .nullable()
+      .optional(),
+    characters: z.array(z.string()).nullable().optional(),
+    confidence: z.enum(['maybe', 'likely', 'certain']).nullable().optional(),
+    text: z.string().nullable().optional(),
+  }),
+  z.object({ type: z.literal('note_clear'), target: z.string() }),
+
   z.object({ type: z.literal('st_start') }),
   z.object({ type: z.literal('st_advance_phase') }),
   z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'nominations', 'dusk']) }),
@@ -65,10 +80,13 @@ function target(room: Room, reference: string): Result<Seat> {
   return seat ? ok(seat) : err(`no player matches "${reference}"`);
 }
 
+/** Commands that change nothing anyone else can see, so nobody else is woken. */
+const PRIVATE_COMMANDS = new Set(['note_set', 'note_clear']);
+
 /** Run a command as `seatId`. Notifies the room's listeners when it succeeds. */
 export function execute(room: Room, seatId: string, command: Command): Result<unknown> {
   const result = dispatch(room, seatId, command);
-  if (result.ok) room.notify();
+  if (result.ok && !PRIVATE_COMMANDS.has(command.type)) room.notify();
   return result;
 }
 
@@ -91,6 +109,22 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
       return game.castVote(seatId, command.vote);
     case 'leave':
       return game.leave(seatId);
+
+    case 'note_set': {
+      const to = target(room, command.target);
+      if (!to.ok) return to;
+      return game.setNote(seatId, to.value.id, {
+        ...(command.alignment !== undefined ? { alignment: command.alignment } : {}),
+        ...(command.teams !== undefined ? { teams: command.teams } : {}),
+        ...(command.characters !== undefined ? { characters: command.characters } : {}),
+        ...(command.confidence !== undefined ? { confidence: command.confidence } : {}),
+        ...(command.text !== undefined ? { text: command.text } : {}),
+      });
+    }
+    case 'note_clear': {
+      const to = target(room, command.target);
+      return to.ok ? game.clearNote(seatId, to.value.id) : to;
+    }
 
     case 'st_start':
       return game.stStart(seatId);

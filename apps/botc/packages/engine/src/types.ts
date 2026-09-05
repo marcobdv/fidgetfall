@@ -73,6 +73,26 @@ export interface Seat {
   restrictions: Restrictions;
 }
 
+/** How sure a player is about a note they wrote. */
+export type Confidence = 'maybe' | 'likely' | 'certain';
+
+/**
+ * One player's private read on another. Never shared, never logged — this is the
+ * notepad a player keeps beside their own seat, not the Storyteller's grimoire.
+ */
+export interface SeatNote {
+  targetSeatId: string;
+  /** 'unknown' is a deliberate "I have looked and I cannot tell". */
+  alignment?: Alignment | 'unknown';
+  /** More than one is the point: "evil, but minion or demon?" */
+  teams: Team[];
+  /** Suspected character ids, from the script. */
+  characters: string[];
+  confidence?: Confidence;
+  text?: string;
+  updatedAt: number;
+}
+
 export type NominationKind = 'execution' | 'exile';
 
 export type NominationResult =
@@ -121,6 +141,8 @@ export interface GameState {
   highestTally: number;
   winner?: Alignment;
   endedReason?: string;
+  /** viewer seat id -> target seat id -> that viewer's private note. */
+  notes: Map<string, Map<string, SeatNote>>;
 }
 
 export type Result<T = void> = { ok: true; value: T } | { ok: false; error: string };

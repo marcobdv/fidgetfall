@@ -45,6 +45,17 @@ flowchart LR
 - **An MCP endpoint** for agents: `join_game`, `look`, `await_event` (long-poll — agents
   block instead of spinning), `say`, `whisper`, `nominate`, `vote`, and one `storyteller`
   tool with the full Storyteller vocabulary.
+- **A briefing per seat** — the server composes a system prompt for *that* player: their
+  character, their team, how it wins, how to play it, and an explicit licence to bluff,
+  mislead and sacrifice inside the game (with an equally explicit boundary around it).
+  Available as an MCP tool, an MCP prompt, and `GET /api/briefing`.
+- **A private notepad** — every player, human or agent, keeps their own read on everyone
+  else: an alignment guess, *several* possible teams at once ("evil, but minion or
+  demon?"), suspected characters, a confidence, and why. Never shared, never logged, not
+  even visible to the Storyteller — and drawn onto your own town square.
+- **A chronicle** — the game retold from the event log: the nights, the deaths, the
+  nominations and their tallies, what you personally were shown, and the grimoire once
+  it is over. It opens by itself when the game ends.
 - **Six skills** in [`skills/`](skills) — one per character group plus the Storyteller —
   so an agent knows how to play its alignment, not just which tools exist.
 - **A script store** in [`data/`](data/README.md), pre-filled with the three base editions
@@ -85,9 +96,12 @@ apps/botc/
 }
 ```
 
-Then load [`skills/botc-player`](skills/botc-player/SKILL.md) and the skill for your group.
-The loop is: `join_game` → `look` → `await_event` → act → repeat. See the skill for the
-rules the server enforces and how to behave at the table.
+Then call `briefing` — the server writes your instructions for that seat, and they are
+authoritative. The file-based skills cover the general case:
+[`skills/botc-player`](skills/botc-player/SKILL.md) plus the one for your group.
+
+The loop is: `join_game` → `briefing` → `look` → `await_event` → act → repeat, keeping
+your reads in `note` as you go.
 
 Agents can run the game too: `create_game` takes the Storyteller seat, and
 [`skills/botc-storyteller`](skills/botc-storyteller/SKILL.md) covers setup, the night
@@ -104,6 +118,10 @@ order, giving information, and calling the game.
 | `BOTC_ADMIN_TOKEN` | — | If set, creating a game requires this token |
 | `BOTC_PUBLIC_URL` | `http://localhost:$PORT` | Used in the join link agents hand out |
 
+Two endpoints are useful outside the browser: `GET /api/briefing?token=…&format=text`
+returns a seat's system prompt as markdown, ready to paste into any harness, and
+`GET /api/recap?token=…&format=text` returns the chronicle the same way.
+
 ## Running it for other people
 
 The server is built for a trusted group — a friend, a Discord, a set of agents you
@@ -117,8 +135,9 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by tests: lobby → night → day → whispers → nominations →
-votes → execution → win, with humans on WebSocket and agents on MCP in the same game.
+Working end to end and covered by 56 tests: lobby → night → day → whispers → nominations →
+votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
+per-seat briefings, private notes, and the chronicle.
 
 Not built yet, in rough priority order:
 
@@ -130,3 +149,5 @@ Not built yet, in rough priority order:
   that carry night order expose it via `read_script`, but nothing walks it for you.
 - **Spectators.** The engine supports a spectator view; nothing exposes it.
 - **Timers.** No day clock, no vote countdown — the Storyteller sets the pace.
+- **Notes are text, not structure.** Nothing cross-checks your reads against what the town
+  has claimed, and nothing warns you when two of your notes cannot both be true.

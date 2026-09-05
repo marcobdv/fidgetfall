@@ -140,6 +140,119 @@ describe('a game with humans and agents', () => {
     st.close();
   });
 
+  it('hands each seat a briefing written for it', async () => {
+    const created = await postJson(port, '/api/games', {
+      scriptId: 'whispers-in-the-orchard',
+      storytellerName: 'ST',
+    });
+    const st = await HumanClient.connect(port, created.token);
+    const agents = [];
+    for (const name of ['Ana', 'Ben', 'Cal']) {
+      agents.push(await AgentClient.join(port, created.joinCode, name));
+    }
+    const [ana, ben] = agents as [AgentClient, AgentClient];
+    await st.waitFor((m) =>
+      m.some((x) => x.type === 'state' && (x['view'] as { seats: unknown[] }).seats.length === 3),
+    );
+    await st.send({ type: 'st_assign', target: 'Ana', character: 'blight' });
+    await st.send({ type: 'st_assign', target: 'Ben', character: 'beekeeper' });
+
+    const demon = await ana.call('briefing');
+    assert.match(demon.text, /\*\*Blight\*\* — demon, evil/);
+    assert.match(demon.text, /Playing the Demon/);
+    assert.match(demon.text, /Deception is the game/);
+    assert.match(demon.text, /Where this stops/, 'the deception licence is bounded');
+    assert.doesNotMatch(demon.text, /Playing a Townsfolk/);
+
+    const good = await ben.call('briefing');
+    assert.match(good.text, /Playing a Townsfolk/);
+    assert.doesNotMatch(good.text, /Playing the Demon/, 'a townsfolk is not told how the demon plays');
+    assert.doesNotMatch(good.text, /Blight/, 'and is not told who the demon is');
+
+    // The storyteller gets a different document, with the grimoire in it.
+    const briefing = await getJson(port, `/api/briefing?token=${created.token}`);
+    assert.match(briefing.text, /You are the \*\*Storyteller\*\*/);
+    assert.match(briefing.text, /Ana — Blight \(demon, evil\)/);
+
+    for (const agent of agents) await agent.close();
+    st.close();
+  });
+
+  it('keeps private notes private and gives them back on look', async () => {
+    const created = await postJson(port, '/api/games', {
+      scriptId: 'whispers-in-the-orchard',
+      storytellerName: 'ST',
+    });
+    const st = await HumanClient.connect(port, created.token);
+    const ana = await AgentClient.join(port, created.joinCode, 'Ana');
+    const ben = await AgentClient.join(port, created.joinCode, 'Ben');
+
+    const written = await ana.call('note', {
+      player: 'Ben',
+      alignment: 'evil',
+      teams: ['minion', 'demon'],
+      confidence: 'maybe',
+      text: 'Would not answer about night one.',
+    });
+    assert.equal(written.isError, false);
+    assert.match(written.text, /minion or demon/);
+
+    const anaLook = await ana.call('look');
+    assert.match(anaLook.text, /your note: evil · minion or demon · \(maybe\)/);
+
+    const benLook = await ben.call('look');
+    assert.doesNotMatch(benLook.text, /your note/, 'Ben sees no note about himself');
+    const stView = st.view() as { seats: { name: string; note?: unknown }[] };
+    assert.equal(stView.seats.find((s) => s.name === 'Ben')?.note, undefined);
+
+    const forgotten = await ana.call('forget_note', { player: 'Ben' });
+    assert.equal(forgotten.isError, false);
+    assert.doesNotMatch((await ana.call('look')).text, /your note/);
+
+    await ana.close();
+    await ben.close();
+    st.close();
+  });
+
+  it('writes a chronicle of the game', async () => {
+    const created = await postJson(port, '/api/games', {
+      name: 'Ravenswood Bluff',
+      scriptId: 'whispers-in-the-orchard',
+      storytellerName: 'ST',
+    });
+    const st = await HumanClient.connect(port, created.token);
+    const agents = [];
+    for (const name of ['Ana', 'Ben', 'Cal']) {
+      agents.push(await AgentClient.join(port, created.joinCode, name));
+    }
+    const [ana] = agents as [AgentClient];
+    await st.waitFor((m) =>
+      m.some((x) => x.type === 'state' && (x['view'] as { seats: unknown[] }).seats.length === 3),
+    );
+    await st.send({ type: 'st_assign', target: 'Cal', character: 'blight' });
+    await st.send({ type: 'st_start' });
+    await st.send({ type: 'st_info', target: 'Ana', text: 'Ben and Cal — one is evil.' });
+    await st.send({ type: 'st_advance_phase' });
+    await ana.call('say', { text: 'Nobody died, which is worse.' });
+    await st.send({ type: 'st_set_phase', phase: 'nominations' });
+    await ana.call('nominate', { player: 'Cal' });
+    for (const agent of agents) await agent.call('vote', { vote: true });
+    await st.send({ type: 'st_close_nomination' });
+    await st.send({ type: 'st_advance_phase' });
+    await st.send({ type: 'st_end_game', winner: 'good', reason: 'The Blight hanged.' });
+
+    const recap = await ana.call('recap');
+    assert.match(recap.text, /# The Chronicle of Ravenswood Bluff/);
+    assert.match(recap.text, /Nobody died, which is worse/);
+    assert.match(recap.text, /Ben and Cal — one is evil/, 'her own night information is in it');
+    assert.match(recap.text, /\*\*Cal\*\* was executed/);
+    assert.match(recap.text, /## The grimoire/, 'the game is over, so it reveals');
+    assert.match(recap.text, /\*\*Good won\.\*\*/);
+
+    for (const agent of agents) await agent.close();
+    st.close();
+  });
+
   it('refuses storyteller powers to a player', async () => {
     const created = await postJson(port, '/api/games', {
       scriptId: 'whispers-in-the-orchard',

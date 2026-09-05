@@ -1,5 +1,7 @@
 /** The per-seat action menu and the Storyteller's control bar. */
 
+import { buildNoteEditor } from './notes.js';
+
 function button(label, onClick) {
   const node = document.createElement('button');
   node.textContent = label;
@@ -96,6 +98,10 @@ export function openSeatMenu(menu, { seat, view, send, close, openChannel }) {
       ),
     );
   }
+
+  // Everybody keeps notes, the Storyteller included — theirs are separate from
+  // the grimoire, and are their read on how the town is reading each other.
+  if (me) menu.appendChild(buildNoteEditor(seat, view, send));
 
   menu.appendChild(button('Close', close));
 }

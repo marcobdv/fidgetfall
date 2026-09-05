@@ -13,8 +13,20 @@ const seatLine = (seat: SeatView, youSeatId: string | undefined): string => {
   if (seat.character) bits.push(`${seat.character.name}${seat.alignment ? ` / ${seat.alignment}` : ''}`);
   if (seat.reminders?.length) bits.push(`reminders: ${seat.reminders.map((r) => r.label).join(', ')}`);
   const you = seat.id === youSeatId ? ' (you)' : '';
-  return `  ${seat.index + 1}. ${seat.name}${you} — ${bits.join(', ')}`;
+  const line = `  ${seat.index + 1}. ${seat.name}${you} — ${bits.join(', ')}`;
+  return seat.note ? `${line}\n       your note: ${renderNote(seat.note)}` : line;
 };
+
+/** One player's private read on another, as a single line. */
+export function renderNote(note: NonNullable<SeatView['note']>): string {
+  const parts: string[] = [];
+  if (note.alignment) parts.push(note.alignment === 'unknown' ? 'alignment unclear' : note.alignment);
+  if (note.teams.length) parts.push(note.teams.join(' or '));
+  if (note.characters.length) parts.push(`maybe ${note.characters.join(' / ')}`);
+  if (note.confidence) parts.push(`(${note.confidence})`);
+  if (note.text) parts.push(`"${note.text}"`);
+  return parts.join(' · ') || 'empty';
+}
 
 /** The whole situation as an agent should read it. */
 export function renderView(view: GameView): string {

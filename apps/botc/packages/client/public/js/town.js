@@ -1,5 +1,7 @@
 /** The town square: seats around a circle, drawn as SVG. */
 
+import { noteSummary, noteTint } from './notes.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CENTER = 500;
 const RADIUS = 340;
@@ -66,6 +68,8 @@ export function renderTown(svg, view, options) {
     if (seat.id === selected) classes.push('selected');
     if (seat.onBlock) classes.push('onblock');
     if (showGrimoire && seat.alignment) classes.push(seat.alignment);
+    const tint = noteTint(seat.note);
+    if (tint && !(showGrimoire && seat.alignment)) classes.push(`note-${tint}`);
 
     const group = el('g', { class: classes.join(' '), transform: `translate(${x} ${y})`, tabindex: 0 });
     group.appendChild(el('circle', { class: 'disc', cx: 0, cy: 0, r: TOKEN }));
@@ -107,6 +111,14 @@ export function renderTown(svg, view, options) {
     else if (seat.id === view.you?.seatId && view.you?.character) sub.push(view.you.character.name);
     if (!seat.connected) sub.push('away');
     if (sub.length) group.appendChild(textNode('text', { class: 'seat-sub', x: 0, y: TOKEN + 56 }, sub.join(' · ')));
+
+    // Your own read, written under their name — only you ever see this.
+    const read = noteSummary(seat.note);
+    if (read) {
+      group.appendChild(
+        textNode('text', { class: 'seat-note', x: 0, y: TOKEN + (sub.length ? 78 : 54) }, read),
+      );
+    }
 
     if (showGrimoire && seat.reminders?.length) {
       group.appendChild(

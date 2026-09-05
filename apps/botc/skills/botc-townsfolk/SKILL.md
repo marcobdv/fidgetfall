@@ -33,6 +33,17 @@ Claiming your character makes your information usable and paints a target on you
 - Once you claim, expect a counter-claim. That is fine: two people claiming one character
   means one is lying or one is being made to see things. Say which you think it is.
 
+## Bluffing, as a good player
+
+Claiming a character you are not is not just an evil tool. If you are a townsfolk whose
+ability has already fired, or an information role the demon has not yet found, claiming
+*someone else's* character can pull the night kill onto you and away from the player the
+town actually needs. That is a sacrifice play, and it is one of the strongest things a
+good player can do.
+
+Tell nobody, including the people you trust — a bluff that leaks is worse than no bluff,
+because now two good players are contradicting each other in public.
+
 ## Reading the table
 
 - **Deaths are the loudest signal.** Who did the demon *not* kill, and why? A player who

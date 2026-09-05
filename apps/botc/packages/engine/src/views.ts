@@ -1,6 +1,14 @@
 import type { AnyEvent, Viewer } from './events.js';
 import type { Game } from './game.js';
-import type { Alignment, Character, Nomination, Phase, ReminderToken, Restrictions } from './types.js';
+import type {
+  Alignment,
+  Character,
+  Nomination,
+  Phase,
+  ReminderToken,
+  Restrictions,
+  SeatNote,
+} from './types.js';
 
 export interface SeatView {
   id: string;
@@ -23,6 +31,8 @@ export interface SeatView {
   restrictions?: Restrictions;
   /** Your vote on the open nomination, if you have cast one. */
   vote?: boolean;
+  /** Your own private read on this player. Nobody else ever sees it. */
+  note?: SeatNote;
 }
 
 export interface NominationView {
@@ -77,12 +87,21 @@ export interface GameView {
 }
 
 const isST = (viewer: Viewer) => viewer.kind === 'storyteller';
+
+/** The seat whose notepad this viewer owns, if any. */
+const notepadOwner = (game: Game, viewer: Viewer): string | undefined =>
+  viewer.kind === 'storyteller'
+    ? game.state.storytellerSeatId
+    : viewer.kind === 'seat'
+      ? viewer.seatId
+      : undefined;
 const isSeat = (viewer: Viewer, seatId: string) => viewer.kind === 'seat' && viewer.seatId === seatId;
 
 export function buildView(game: Game, viewer: Viewer): GameView {
   const state = game.state;
   const nomination = game.activeNomination();
   const alive = game.alivePlayers().length;
+  const notepad = notepadOwner(game, viewer);
 
   const seats: SeatView[] = game
     .players()
@@ -113,6 +132,8 @@ export function buildView(game: Game, viewer: Viewer): GameView {
       }
       const cast = nomination?.votes.find((v) => v.seatId === seat.id);
       if (cast) view.vote = cast.vote;
+      const note = notepad ? game.note(notepad, seat.id) : undefined;
+      if (note) view.note = note;
       return view;
     });
 

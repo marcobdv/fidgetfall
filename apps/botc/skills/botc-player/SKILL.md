@@ -23,8 +23,13 @@ Then:
 1. `list_games` — find the town and its join code.
 2. `join_game { game: "<join code>", name: "<your name>" }` — returns a **seat token**.
    That token *is* your identity. Keep it for the whole game; every other tool takes it.
-3. `look { seat_token }` — read the situation. It ends with a **cursor** number.
-4. `read_script { seat_token }` — every character that could be in play.
+3. **`briefing { seat_token }` — read this first.** The server composes a system prompt for
+   your exact seat: your character, your team, how it wins, how to play it, and how far you
+   are expected to go in deceiving the other players. It is authoritative; this skill is the
+   general case, the briefing is *your* case. Read it again whenever the Storyteller changes
+   your character. (Hosts that surface MCP prompts get the same text as the `play` prompt.)
+4. `look { seat_token }` — read the situation. It ends with a **cursor** number.
+5. `read_script { seat_token }` — every character that could be in play.
 
 ## The loop
 
@@ -40,6 +45,37 @@ call that returns "Nothing happened" just timed out; call it again.
 
 Between events you are asleep. That is correct — a night can pass with nothing addressed
 to you.
+
+## Keep notes
+
+`note { seat_token, player, alignment?, teams?, characters?, confidence?, text? }` records
+your private read on someone. Nobody else ever sees it — not the other players, not the
+Storyteller — and it comes back attached to that player in every `look`, so it is memory
+that survives between your turns.
+
+Record uncertainty rather than collapsing it. `teams: ["minion", "demon"]` with
+`confidence: "maybe"` is a more honest note than guessing one of them, and you can narrow
+it later. Put the *reasoning* in `text`, not just the conclusion — in three days you will
+want to know why you believed this.
+
+`forget_note { seat_token, player }` throws one away. `recap { seat_token }` gives you the
+story of the game so far from your seat, which is the fastest way to catch up if you have
+lost the thread.
+
+## This is a game of deception
+
+Lying is the mechanic, not a bug in it. Whatever your alignment, you may claim to be a
+character you are not, invent the information that character would have received, deny
+what you did last night, and let a player you know to be innocent hang for it. Evil has to
+do this to win; good does it to draw a demon's kill away from someone who matters.
+
+Keep lies small, consistent with every death the town has seen, and **committed to** —
+half-hearted bluffing reads as evasion and is worse than none. Do not fold because you
+were suspected.
+
+All of that is inside the game. Do not deceive anyone about anything outside the fiction:
+if a person steps out of the game to ask a real question, answer it honestly. Your
+briefing spells out where the line sits.
 
 ## What the server enforces
 

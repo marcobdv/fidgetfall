@@ -2,9 +2,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import type { AnyEvent } from '@botc/engine';
-import { CommandSchema, execute, type Command } from './commands.js';
-import { renderEvents, renderScriptCharacters, renderView } from './render.js';
+import { writeChronicle, type AnyEvent } from '@botc/engine';
+import { RECAP_PROMPT, writeBriefing } from './briefing.js';
+import { CommandSchema, execute, resolveSeat, type Command } from './commands.js';
+import { renderEvents, renderNote, renderScriptCharacters, renderView } from './render.js';
 import type { Room, RoomManager } from './rooms.js';
 import type { ScriptStore } from './scriptStore.js';
 import type { Config } from './config.js';
@@ -461,6 +462,86 @@ export function buildMcpServer(deps: McpDeps): McpServer {
   );
 
   server.registerTool(
+    'briefing',
+    {
+      title: 'Read your briefing',
+      description:
+        'Your full instructions for this seat: the rules, your character, how your team wins, how to play it, and how far you are expected to go in deceiving the other players. Read this once when you sit down, and again if the Storyteller changes your character.',
+      inputSchema: { seat_token: SEAT_TOKEN },
+    },
+    async ({ seat_token }) => {
+      const found = seated(seat_token);
+      if (!found) return fail('That seat token is not valid.');
+      return text(writeBriefing(found.room, found.seatId));
+    },
+  );
+
+  server.registerTool(
+    'note',
+    {
+      title: 'Write a private note on a player',
+      description:
+        'Your own read on someone, private to you and invisible to everyone including the Storyteller. Record more than one team when you are unsure — "evil, but minion or demon" is exactly what this is for. Fields you leave out keep their current value; pass null to clear one. Your notes come back with every look.',
+      inputSchema: {
+        seat_token: SEAT_TOKEN,
+        player: z.string().describe('Their name or seat number.'),
+        alignment: z
+          .enum(['good', 'evil', 'unknown'])
+          .nullable()
+          .optional()
+          .describe('"unknown" means you looked and cannot tell — different from having no note.'),
+        teams: z
+          .array(z.enum(['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled']))
+          .nullable()
+          .optional()
+          .describe('Every group they could still be. List several while you are narrowing it down.'),
+        characters: z.array(z.string()).nullable().optional().describe('Suspected character ids from the script.'),
+        confidence: z.enum(['maybe', 'likely', 'certain']).nullable().optional(),
+        text: z.string().nullable().optional().describe('Why you think so. Write the reasoning, not just the conclusion.'),
+      },
+    },
+    async ({ seat_token, player, ...patch }) => {
+      const found = seated(seat_token);
+      if (!found) return fail('That seat token is not valid.');
+      const result = execute(found.room, found.seatId, {
+        type: 'note_set',
+        target: player,
+        ...patch,
+      } as Command);
+      if (!result.ok) return fail(result.error);
+      const seat = resolveSeat(found.room, player);
+      const note = seat ? found.room.game.note(found.seatId, seat.id) : undefined;
+      return text(`Noted on ${seat?.name ?? player}: ${note ? renderNote(note) : 'cleared'}`);
+    },
+  );
+
+  server.registerTool(
+    'forget_note',
+    {
+      title: 'Delete a note',
+      description: 'Throw away your note on a player.',
+      inputSchema: { seat_token: SEAT_TOKEN, player: z.string() },
+    },
+    async ({ seat_token, player }) =>
+      run(seat_token, { type: 'note_clear', target: player }, () => `Note on ${player} discarded.`),
+  );
+
+  server.registerTool(
+    'recap',
+    {
+      title: 'Read the chronicle',
+      description:
+        'The story of the game so far, from your seat: the nights, the deaths, the nominations and their tallies, and what you personally were shown. Once the game is over it also reveals the grimoire. Useful mid-game to catch up, and at the end to tell the table what happened.',
+      inputSchema: { seat_token: SEAT_TOKEN },
+    },
+    async ({ seat_token }) => {
+      const found = seated(seat_token);
+      if (!found) return fail('That seat token is not valid.');
+      return text(writeChronicle(found.room.game, found.room.viewerFor(found.seatId)));
+    },
+  );
+
+  server.registerTool(
     'storyteller',
     {
       title: 'Storyteller action',
@@ -501,6 +582,46 @@ export function buildMcpServer(deps: McpDeps): McpServer {
       const built = toCommand(args as StArgs);
       if (!built.ok) return fail(built.error);
       return run(args.seat_token, built.command, (room, seatId) => renderView(room.view(seatId)));
+    },
+  );
+
+  // Prompts, for hosts that surface them: the same briefing and a recap writer.
+  server.registerPrompt(
+    'play',
+    {
+      title: 'Play this seat',
+      description: 'The full system prompt for your seat: rules, character, team, and how to play it.',
+      argsSchema: { seat_token: z.string() },
+    },
+    ({ seat_token }) => {
+      const found = seated(seat_token);
+      const body = found
+        ? writeBriefing(found.room, found.seatId)
+        : 'That seat token is not valid. Call join_game first.';
+      return { messages: [{ role: 'user' as const, content: { type: 'text' as const, text: body } }] };
+    },
+  );
+
+  server.registerPrompt(
+    'tell_the_story',
+    {
+      title: 'Retell the game',
+      description: 'Turn the chronicle of this game into a short story worth reading aloud.',
+      argsSchema: { seat_token: z.string() },
+    },
+    ({ seat_token }) => {
+      const found = seated(seat_token);
+      const chronicle = found
+        ? writeChronicle(found.room.game, found.room.viewerFor(found.seatId))
+        : '(no game — the seat token was not valid)';
+      return {
+        messages: [
+          {
+            role: 'user' as const,
+            content: { type: 'text' as const, text: `${RECAP_PROMPT}\n\n---\n\n${chronicle}` },
+          },
+        ],
+      };
     },
   );
 

@@ -102,6 +102,16 @@ Call it out loud, and say why. The last thing the table hears from you is the st
 what happened, so make the ending land: who was who, what nearly worked, and the moment
 the game turned.
 
+## Afterwards
+
+`recap { seat_token }` writes the chronicle of the game from the event log — every night,
+every death, every nomination and its tally, and the full grimoire once you have called
+the game. Read it out, or hand it to the table. Hosts that surface MCP prompts also expose
+`tell_the_story`, which asks you to retell that chronicle as prose.
+
+Your ending is the last thing the table hears from you. Say who was who, what nearly
+worked, and the moment the game actually turned — which is rarely the moment it ended.
+
 ## Running a game with agent players
 
 - Agents block on `await_event`. If you go quiet for a long time, they are simply waiting —

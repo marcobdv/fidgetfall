@@ -25,6 +25,8 @@ import {
   type Result,
   type Seat,
   type SeatKind,
+  type SeatNote,
+  type Team,
 } from './types.js';
 
 export interface GameOptions {
@@ -95,6 +97,7 @@ export class Game {
       storytellerSeatId: storyteller.id,
       nominations: [],
       highestTally: 0,
+      notes: new Map(),
     };
 
     this.emit(
@@ -646,6 +649,86 @@ export class Game {
       actorSeatId,
     );
     return ok(undefined);
+  }
+
+  // ------------------------------------------------------------ private notes
+
+  /**
+   * A seat's private reads on the other players. These never enter the event log
+   * and never appear in anyone else's view — not even the Storyteller's.
+   */
+  notesFor(seatId: string): SeatNote[] {
+    const notes = this.state.notes.get(seatId);
+    if (!notes) return [];
+    return [...notes.values()].sort((a, b) => {
+      const left = this.seat(a.targetSeatId)?.index ?? 0;
+      const right = this.seat(b.targetSeatId)?.index ?? 0;
+      return left - right;
+    });
+  }
+
+  note(seatId: string, targetSeatId: string): SeatNote | undefined {
+    return this.state.notes.get(seatId)?.get(targetSeatId);
+  }
+
+  /**
+   * Write or update a note. Fields left `undefined` keep their current value;
+   * pass `null` to clear one.
+   */
+  setNote(
+    actorSeatId: string,
+    targetSeatId: string,
+    patch: {
+      alignment?: Alignment | 'unknown' | null;
+      teams?: Team[] | null;
+      characters?: string[] | null;
+      confidence?: SeatNote['confidence'] | null;
+      text?: string | null;
+    },
+  ): Result<SeatNote> {
+    const actor = this.requireSeat(actorSeatId);
+    if (!actor.ok) return actor;
+    const target = this.requirePlayer(targetSeatId);
+    if (!target.ok) return target;
+
+    const existing = this.note(actorSeatId, targetSeatId);
+    const note: SeatNote = existing
+      ? { ...existing }
+      : { targetSeatId, teams: [], characters: [], updatedAt: this.now() };
+
+    if (patch.alignment !== undefined) {
+      if (patch.alignment === null) delete note.alignment;
+      else note.alignment = patch.alignment;
+    }
+    if (patch.teams !== undefined) note.teams = patch.teams ?? [];
+    if (patch.characters !== undefined) {
+      const unknown = (patch.characters ?? []).filter((id) => !this.character(id));
+      if (unknown.length) return err(`not on this script: ${unknown.join(', ')}`);
+      note.characters = patch.characters ?? [];
+    }
+    if (patch.confidence !== undefined) {
+      if (patch.confidence === null) delete note.confidence;
+      else note.confidence = patch.confidence;
+    }
+    if (patch.text !== undefined) {
+      const trimmed = patch.text?.trim();
+      if (!trimmed) delete note.text;
+      else if (trimmed.length > 500) return err('a note is longer than 500 characters');
+      else note.text = trimmed;
+    }
+    note.updatedAt = this.now();
+
+    const forSeat = this.state.notes.get(actorSeatId) ?? new Map<string, SeatNote>();
+    forSeat.set(targetSeatId, note);
+    this.state.notes.set(actorSeatId, forSeat);
+    return ok(note);
+  }
+
+  clearNote(actorSeatId: string, targetSeatId: string): Result<void> {
+    const actor = this.requireSeat(actorSeatId);
+    if (!actor.ok) return actor;
+    const removed = this.state.notes.get(actorSeatId)?.delete(targetSeatId);
+    return removed ? ok(undefined) : err('you have no note on that player');
   }
 
   // ------------------------------------------------------------ life & death

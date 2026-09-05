@@ -9,6 +9,7 @@ import {
   renderLog,
 } from './side.js';
 import { openSeatMenu, renderActionBar, renderStorytellerBar } from './menu.js';
+import { showOverlay } from './overlay.js';
 
 const STORAGE_KEY = 'botc.session';
 
@@ -18,6 +19,7 @@ const state = {
   events: [],
   channel: 'town',
   selected: null,
+  menuAt: null,
   unread: {},
   showGrimoire: true,
   socket: null,
@@ -47,6 +49,8 @@ const dom = {
   grimoireToggle: $('grimoire-toggle'),
   seatMenu: $('seat-menu'),
   leave: $('leave'),
+  briefing: $('briefing'),
+  chronicle: $('chronicle'),
 };
 
 // ------------------------------------------------------------------ lobby
@@ -165,8 +169,15 @@ function flash(message) {
   render();
 }
 
+let endShown = false;
+
 function onState(view) {
+  const wasOver = state.view?.phase === 'over';
   state.view = view;
+  if (view.phase === 'over' && !wasOver && !endShown) {
+    endShown = true;
+    showDocument('The chronicle', '/api/recap');
+  }
   if (view.you?.isStoryteller) {
     dom.grimoireToggle.hidden = false;
     dom.grimoireToggle.classList.toggle('primary', state.showGrimoire);
@@ -208,21 +219,25 @@ function render() {
     showGrimoire,
     onSeatClick: (seat, position) => {
       state.selected = seat.id;
-      openSeatMenu(dom.seatMenu, {
-        seat,
-        view,
-        send,
-        close: () => {
-          dom.seatMenu.hidden = true;
-          state.selected = null;
-          render();
-        },
-        openChannel: (channel) => selectChannel(channel),
-      });
-      placeMenu(position);
+      state.menuAt = position;
       render();
     },
   });
+
+  // The menu is rendered from state, so writing a note refreshes it in place.
+  const menuSeat = view.seats.find((s) => s.id === state.selected);
+  if (menuSeat && state.menuAt) {
+    openSeatMenu(dom.seatMenu, {
+      seat: menuSeat,
+      view,
+      send,
+      close: closeMenu,
+      openChannel: (channel) => selectChannel(channel),
+    });
+    placeMenu(state.menuAt);
+  } else {
+    dom.seatMenu.hidden = true;
+  }
 
   renderActionBar(dom.actionbar, { view, send });
   if (you?.isStoryteller) {
@@ -245,10 +260,18 @@ function render() {
   dom.sayInput.disabled = state.channel === 'grimoire';
 }
 
+function closeMenu() {
+  dom.seatMenu.hidden = true;
+  state.selected = null;
+  state.menuAt = null;
+  render();
+}
+
 function selectChannel(channel) {
   state.channel = channel;
   state.unread[channel] = 0;
-  dom.seatMenu.hidden = true;
+  state.selected = null;
+  state.menuAt = null;
   render();
   dom.sayInput.focus();
 }
@@ -284,11 +307,22 @@ dom.leave.addEventListener('click', () => {
 
 document.addEventListener('click', (event) => {
   if (!dom.seatMenu.hidden && !dom.seatMenu.contains(event.target) && !event.target.closest('.token')) {
-    dom.seatMenu.hidden = true;
-    state.selected = null;
-    render();
+    closeMenu();
   }
 });
+
+async function showDocument(title, path) {
+  showOverlay(title, '', { loading: true });
+  try {
+    const { text } = await api(`${path}?token=${encodeURIComponent(state.token)}`);
+    showOverlay(title, text);
+  } catch (error) {
+    showOverlay(title, `Could not load it: ${error.message}`);
+  }
+}
+
+dom.briefing.addEventListener('click', () => showDocument('Your seat', '/api/briefing'));
+dom.chronicle.addEventListener('click', () => showDocument('The chronicle', '/api/recap'));
 
 // ------------------------------------------------------------------ boot
 
