@@ -375,6 +375,7 @@ export class PokerHand {
       seat,
       action: action.type as ActionType,
       amount: recordedAmount,
+      total: player.committed,
       toCall: legal.toCall,
       potBefore,
       street: this.street,

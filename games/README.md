@@ -20,6 +20,13 @@ the verified template and toolchain smoke-test.
 |---|---|---|
 | Clockwork Menagerie | [marcobdv/clockwork-menagerie](https://github.com/marcobdv/clockwork-menagerie) | Cozy, no-fail game about repairing little clockwork creatures. Playable vertical slice. Built end-to-end by the studio orchestration. |
 
+## Not a game
+
+Non-game experiments live in [`apps/`](../apps), outside this portfolio and outside the
+Godot conventions — see [ADR-0009](../docs/adr/0009-holdem-typescript-exception.md).
+Today that is [`apps/holdem`](../apps/holdem), an online Texas Hold'em table for humans
+and AI agents.
+
 ## Starting a new game
 
 Copy `sample-clockwork/` to `games/<your-slug>/`, rename the assembly, and run the

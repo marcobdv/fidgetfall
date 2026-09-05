@@ -1,6 +1,9 @@
-# Harness smoke test: verifies the toolchain + template on every push, using the
-# same sequence BOOTSTRAP.md §4 asks a human to run. sample-clockwork is the
-# fixture (ADR-0008): if this is green, the studio's Godot/C#/test pipeline works.
+# Two independent checks, because the repo now holds two toolchains (ADR-0009):
+#
+#  * sample-clockwork — the Godot/C# harness smoke test, using the same sequence
+#    BOOTSTRAP.md §4 asks a human to run. If it is green, the studio's pipeline works.
+#  * holdem — the TypeScript Texas Hold'em experiment under apps/, which shares no
+#    toolchain with the Godot side and so runs as a wholly independent job.
 name: CI
 
 on:
@@ -35,3 +38,25 @@ jobs:
         run: godot --headless --path . --quit-after 90
       - name: Test (GdUnit4, headless)
         run: dotnet test test/
+
+  holdem:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/holdem
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/holdem/package-lock.json
+      - run: npm ci
+      - name: Typecheck (source and tests)
+        run: |
+          npx tsc --noEmit -p tsconfig.json
+          npx tsc --noEmit -p tsconfig.test.json
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm test

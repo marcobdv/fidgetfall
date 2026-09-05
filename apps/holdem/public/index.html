@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fidgetfall Hold'em</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>♠</text></svg>"
+    />
+  </head>
+  <body>
+    <header>
+      <div class="brand">Fidgetfall <span>Hold'em</span></div>
+      <div class="meta" id="header-meta"></div>
+      <div class="spacer"></div>
+      <button id="leave-btn" class="ghost hidden">Leave table</button>
+    </header>
+
+    <!-- ------------------------------------------------------------ lobby -->
+    <main id="lobby">
+      <div class="lobby-grid">
+        <div>
+          <div class="card">
+            <h2>Tables</h2>
+            <p class="hint">
+              Join a seat, or start your own below. Agents sit at these same tables over MCP.
+            </p>
+            <div class="table-list" id="table-list"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>Start a table</h2>
+            <p class="hint">A table exists as soon as you ask for one.</p>
+
+            <div class="field">
+              <label for="f-name">Your name</label>
+              <input id="f-name" maxlength="24" placeholder="Ada" />
+            </div>
+            <div class="field">
+              <label for="f-table">Table name</label>
+              <input id="f-table" maxlength="60" placeholder="Kitchen table" />
+            </div>
+            <div class="row field">
+              <div>
+                <label for="f-sb">Small blind</label>
+                <input id="f-sb" type="number" min="1" value="10" />
+              </div>
+              <div>
+                <label for="f-bb">Big blind</label>
+                <input id="f-bb" type="number" min="1" value="20" />
+              </div>
+            </div>
+            <div class="row field">
+              <div>
+                <label for="f-seats">Seats</label>
+                <select id="f-seats">
+                  <option>2</option>
+                  <option>3</option>
+                  <option>4</option>
+                  <option selected>6</option>
+                  <option>9</option>
+                </select>
+              </div>
+              <div>
+                <label for="f-buyin">Your buy-in</label>
+                <input id="f-buyin" type="number" min="1" value="2000" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Seat some opponents</label>
+              <div class="bot-picker" id="bot-picker"></div>
+            </div>
+
+            <div class="field">
+              <label class="check">
+                <input type="checkbox" id="f-coach" checked />
+                <span><b>Coach me</b><small>Show equity, outs and pot odds while I play.</small></span>
+              </label>
+            </div>
+
+            <button class="primary" id="create-btn" style="width: 100%">Create and sit down</button>
+          </div>
+
+          <div class="card">
+            <h2>Bring an agent</h2>
+            <p class="hint">
+              Agents connect over MCP and play from the same seats you do — they see their own
+              cards and nothing else.
+            </p>
+            <div class="field">
+              <label>Remote (streamable HTTP)</label>
+              <input id="mcp-url" readonly />
+            </div>
+            <div class="field">
+              <label>Local (stdio)</label>
+              <input id="mcp-stdio" readonly />
+            </div>
+            <p class="hint" style="margin: 0">
+              An agent calls <code>list_tables</code>, then <code>join_table</code>, then loops on
+              <code>wait_for_turn</code> and <code>act</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ------------------------------------------------------------ table -->
+    <div id="table-view" class="hidden">
+      <div id="felt-wrap">
+        <div class="felt" id="felt">
+          <div class="centre">
+            <div class="street" id="street-label"></div>
+            <div class="board" id="board"></div>
+            <div class="pot" id="pot"></div>
+          </div>
+        </div>
+        <div id="actions"></div>
+      </div>
+
+      <aside id="sidebar">
+        <div class="tabs">
+          <button data-pane="coach" class="on">Coach</button>
+          <button data-pane="review">Last hand</button>
+          <button data-pane="log">Log</button>
+        </div>
+        <div class="pane on" id="pane-coach"></div>
+        <div class="pane" id="pane-review"></div>
+        <div class="pane" id="pane-log"></div>
+      </aside>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

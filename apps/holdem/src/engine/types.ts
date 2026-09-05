@@ -75,7 +75,19 @@ export type HandEvent =
   | { type: "hand-start"; handId: string; buttonSeat: number; seats: number[] }
   | { type: "post"; seat: number; amount: number; blind: "small" | "big" | "ante" }
   | { type: "deal-hole"; seats: number[] }
-  | { type: "action"; seat: number; action: ActionType; amount: number; toCall: number; potBefore: number; street: Street }
+  | {
+      type: "action";
+      seat: number;
+      action: ActionType;
+      /** Chips added to the pot by this action. */
+      amount: number;
+      /** The seat's total contribution to this betting round afterwards. */
+      total: number;
+      /** What the action cost to call, before it was taken. */
+      toCall: number;
+      potBefore: number;
+      street: Street;
+    }
   | { type: "street"; street: Street; cards: Card[]; pot: number }
   | { type: "uncalled-returned"; seat: number; amount: number }
   | { type: "showdown"; entries: ShowdownEntry[] }

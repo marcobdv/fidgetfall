@@ -80,7 +80,8 @@ Full definitions and a delegation guide: [`docs/roles.md`](docs/roles.md).
 ```
 .pi/agents/   role subagents      docs/         studio process, ADRs & conventions
 .pi/skills/   Godot/C# skills      games/        prototypes + the template (graduated games live in their own repos)
-AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
+AGENTS.md     studio handbook      apps/         non-game experiments (not Godot — see ADR-0009)
+BOOTSTRAP.md  setup instructions
 ```
 
 ## 📐 How it's set up
@@ -95,6 +96,11 @@ AGENTS.md     studio handbook      BOOTSTRAP.md  setup instructions
 > **Games:** prototypes live in `games/`; once greenlit they **graduate to their own
 > repo** (own CI + releases), and this repo links to them from `games/README.md`. See
 > [ADR-0008](docs/adr/0008-games-graduate-to-own-repos.md).
+>
+> **Experiments:** things that are not Godot games live in `apps/`. Today that is
+> [**Fidgetfall Hold'em**](apps/holdem) — an online Texas Hold'em table where humans play
+> in the browser with a coach, and AI agents take seats over MCP. See
+> [ADR-0009](docs/adr/0009-holdem-typescript-exception.md).
 
 ## 📊 Status
 
