@@ -15,6 +15,9 @@
 # Node (Pi tooling)
 node_modules/
 
+# Claude Code per-session local settings (not part of the studio harness)
+.claude/settings.local.json
+
 # Machine-specific notes (local toolchain paths etc.)
 LOCAL.md
 

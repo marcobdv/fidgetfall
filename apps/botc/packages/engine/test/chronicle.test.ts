@@ -65,6 +65,13 @@ describe('the chronicle', () => {
     assert.match(story, /It has not\./);
   });
 
+  it('keeps what the Storyteller announced out loud', () => {
+    const t = playedOut();
+    expectOk(t.game.stAnnounce(t.st.id, 'Correction: the vote closed at 3 of 3 and Eve is on the block.'));
+    const story = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Ben').id });
+    assert.match(story, /The Storyteller: \*Correction: the vote closed at 3 of 3/);
+  });
+
   it('counts the game up at the end', () => {
     const t = playedOut();
     const story = writeChronicle(t.game, { kind: 'storyteller' });

@@ -45,6 +45,30 @@ describe('script parsing', () => {
     assert.equal(script.characters[0]?.ability, 'Homebrew text');
   });
 
+  it('lets an enrichment file add ability text without reassigning teams', () => {
+    // A roles.json that only carries ability text must not turn the Imp into a townsfolk.
+    const enriched = buildCharacterIndex(
+      [
+        { id: 'imp', name: 'Imp', team: 'demon' },
+        { id: 'poisoner', name: 'Poisoner', team: 'minion' },
+      ],
+      [
+        { id: 'imp', ability: 'Each night*, choose a player: they die.' },
+        { id: 'poisoner', ability: 'Each night, choose a player: they are poisoned.' },
+      ],
+    );
+    assert.equal(enriched.get('imp')?.team, 'demon');
+    assert.equal(enriched.get('imp')?.ability, 'Each night*, choose a player: they die.');
+    assert.equal(enriched.get('poisoner')?.team, 'minion');
+    assert.equal(enriched.get('poisoner')?.name, 'Poisoner');
+  });
+
+  it('still defaults a team when nothing ever supplied one', () => {
+    const index = buildCharacterIndex([{ id: 'mystery', ability: 'Unknown.' }]);
+    assert.equal(index.get('mystery')?.team, 'townsfolk');
+    assert.equal(index.get('mystery')?.name, 'Mystery');
+  });
+
   it('de-duplicates repeated ids', () => {
     const { script } = parseScript('d', [{ id: '_meta', name: 'D' }, 'imp', 'imp'], index);
     assert.equal(script.characters.length, 1);

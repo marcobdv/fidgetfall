@@ -16,16 +16,27 @@ function humanize(id: string): string {
 const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.length > 0 ? v : undefined);
 
-/** Read a character out of a raw script-tool / roles.json entry. */
-export function parseCharacter(raw: unknown): Character | undefined {
+/** An entry that may only carry the fields it wants to change. */
+export type PartialCharacter = Partial<Character> & { id: string };
+
+/**
+ * Read a character out of a raw script-tool / roles.json entry.
+ *
+ * Fields the entry does not mention are **left out**, not defaulted — an
+ * enrichment file that supplies only ability text must not silently reassign
+ * every character to the Townsfolk.
+ */
+export function parseCharacter(raw: unknown): PartialCharacter | undefined {
   if (!isRecord(raw)) return undefined;
   const id = str(raw['id']);
   if (!id || id === '_meta') return undefined;
-  const team = isTeam(raw['team']) ? raw['team'] : 'townsfolk';
   const reminders = Array.isArray(raw['reminders'])
     ? raw['reminders'].filter((r): r is string => typeof r === 'string')
     : undefined;
-  const character: Character = { id, name: str(raw['name']) ?? humanize(id), team };
+  const character: PartialCharacter = { id };
+  const name = str(raw['name']);
+  if (name) character.name = name;
+  if (isTeam(raw['team'])) character.team = raw['team'];
   const ability = str(raw['ability']);
   if (ability) character.ability = ability;
   const firstNight = num(raw['firstNight']);
@@ -41,6 +52,11 @@ export function parseCharacter(raw: unknown): Character | undefined {
   return character;
 }
 
+/** Fill in the defaults a character needs when nothing else supplied them. */
+export function completeCharacter(partial: PartialCharacter): Character {
+  return { name: humanize(partial.id), team: 'townsfolk', ...partial };
+}
+
 /**
  * Build the id -> character lookup. Later sources win field by field, so a local
  * roles.json can add ability text and night order on top of the shipped index
@@ -53,7 +69,7 @@ export function buildCharacterIndex(...sources: unknown[][]): Map<string, Charac
       const parsed = parseCharacter(raw);
       if (!parsed) continue;
       const existing = index.get(parsed.id);
-      index.set(parsed.id, existing ? { ...existing, ...parsed } : parsed);
+      index.set(parsed.id, existing ? { ...existing, ...parsed } : completeCharacter(parsed));
     }
   }
   return index;
@@ -89,7 +105,7 @@ export function parseScript(fallbackId: string, raw: unknown, index: Map<string,
       const inline = parseCharacter(entry);
       if (inline) {
         const base = index.get(inline.id);
-        character = base ? { ...base, ...inline } : inline;
+        character = base ? { ...base, ...inline } : completeCharacter(inline);
       }
     }
     if (!character || seen.has(character.id)) continue;

@@ -170,6 +170,8 @@ function narrateNight(act: Act, pick: ReturnType<typeof picker>, index: number):
   }
   for (const told of act.toldYou) lines.push(`You were shown: *${told}*`);
 
+  for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
+
   if (act.deaths.length === 0) {
     if (act.day > 1) {
       lines.push(
@@ -208,6 +210,9 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
 
   const opener = act.said[0];
   if (opener) lines.push(`${opener.name} opened: *"${trim(opener.text)}"*`);
+
+  // What the Storyteller said out loud is part of the record, not scaffolding.
+  for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
 
   const whispers = [...act.whispers.entries()].sort((a, b) => b[1] - a[1]);
   if (whispers.length) {
