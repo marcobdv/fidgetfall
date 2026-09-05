@@ -7,6 +7,7 @@ import type {
   Phase,
   ReminderToken,
   Restrictions,
+  Seat,
   SeatNote,
   Timers,
 } from './types.js';
@@ -126,6 +127,12 @@ export interface GameView {
   openConversations: { names: string[] }[];
   /** The people you are currently standing with, if you stepped aside. */
   talkingWith?: string[];
+  /**
+   * Storyteller only: tonight's wake order, straight off the script, with the name
+   * of whoever holds each character. Running the order by hand is how a Storyteller
+   * forgets the Exorcist.
+   */
+  nightOrder?: { order: number; characterName: string; inPlay?: string }[];
 
 }
 
@@ -139,6 +146,16 @@ const notepadOwner = (game: Game, viewer: Viewer): string | undefined =>
       ? viewer.seatId
       : undefined;
 const isSeat = (viewer: Viewer, seatId: string) => viewer.kind === 'seat' && viewer.seatId === seatId;
+
+/**
+ * The alignment a player believes they have. For almost everyone that is simply
+ * the truth; for a Lunatic told they are the Demon it is *evil*, because a briefing
+ * that reads "Po — demon, good" tells them exactly what they are in one line.
+ */
+function alignmentOf(seat: Seat, believed: Character | undefined): Alignment | undefined {
+  if (!believed) return seat.alignment;
+  return believed.team === 'minion' || believed.team === 'demon' ? 'evil' : 'good';
+}
 
 export function buildView(game: Game, viewer: Viewer): GameView {
   const state = game.state;
@@ -207,8 +224,11 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         const character = isST(viewer) ? truth : (believed ?? truth);
         if (character) view.character = character;
         if (isST(viewer) && believed) view.believedCharacter = believed;
-        // Their alignment stays their own; only the Storyteller and they see it.
-        if (seat.alignment && (isST(viewer) || mine)) view.alignment = seat.alignment;
+        // Their alignment stays their own; only the Storyteller and they see it — and a
+        // lied-to player is told the alignment that goes WITH the lie. A Lunatic who
+        // reads "Demon, good" has been handed the answer on their own briefing.
+        const shown = isST(viewer) ? seat.alignment : alignmentOf(seat, believed);
+        if (shown && (isST(viewer) || mine)) view.alignment = shown;
       }
       if (isST(viewer)) {
         view.reminders = seat.reminders;
@@ -236,8 +256,9 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         ? (() => {
             const seat = game.seat(viewer.seatId);
             if (!seat) return null;
-            const character =
-              game.character(seat.believedCharacterId) ?? game.character(seat.characterId);
+            const believed = game.character(seat.believedCharacterId);
+            const character = believed ?? game.character(seat.characterId);
+            const alignment = alignmentOf(seat, believed);
             return {
               seatId: seat.id,
               name: seat.name,
@@ -246,7 +267,7 @@ export function buildView(game: Game, viewer: Viewer): GameView {
               ghostVote: seat.ghostVote,
               isTraveller: seat.isTraveller,
               ...(character ? { character } : {}),
-              ...(seat.alignment ? { alignment: seat.alignment } : {}),
+              ...(alignment ? { alignment } : {}),
               restrictions: seat.restrictions,
               // Your own ledger: what you have told whom, so you can keep a
               // story straight — or notice that you have not.
@@ -272,6 +293,20 @@ export function buildView(game: Game, viewer: Viewer): GameView {
     id: state.id,
     name: state.name,
     metToday: game.metToday(),
+    ...(isST(viewer)
+      ? {
+          nightOrder: game.nightOrder().map((character) => {
+            const holder = game
+              .players()
+              .find((seat) => seat.characterId === character.id || seat.believedCharacterId === character.id);
+            return {
+              order: (state.day <= 1 ? character.firstNight : character.otherNight) ?? 0,
+              characterName: character.name,
+              ...(holder ? { inPlay: `${holder.name}${holder.characterId === character.id ? '' : ' (believes it)'}` } : {}),
+            };
+          }),
+        }
+      : {}),
     openConversations: game
       .openConversations()
       .map((c) => ({ names: c.seatIds.map((id) => game.seat(id)?.name ?? '?') })),
@@ -350,6 +385,14 @@ export function describeEvent(game: Game, event: AnyEvent): string {
     case 'chat.whisper': {
       const to = (d['toNames'] as string[]) ?? [];
       return `[whisper ${d['fromName']} -> ${to.join(', ')}] ${d['text']}`;
+    }
+    case 'game.rollcall': {
+      const seats = (d['seats'] as Record<string, unknown>[]) ?? [];
+      const rows = seats.map((row) => {
+        const believed = row['believedCharacterName'];
+        return `  ${row['index']}. ${row['name']} — ${row['characterName']} (${row['team']}, ${row['alignment']})${believed ? `, and thought they were the ${believed}` : ''}${row['alive'] ? '' : ', dead'}`;
+      });
+      return ['THE ROLL CALL — everyone, out loud:', ...rows].join('\n');
     }
     case 'conversation.opened': {
       const who = (d['names'] as string[]) ?? [];

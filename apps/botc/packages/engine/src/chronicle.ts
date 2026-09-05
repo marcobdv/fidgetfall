@@ -173,14 +173,18 @@ function narrateNight(act: Act, pick: ReturnType<typeof picker>, index: number):
       ]),
     );
   }
-  if (act.wokeYou) {
+  // A bare count of wakings tells you nothing; what you were shown is the night.
+  if (act.toldYou.length) {
+    lines.push('', '**You were woken, and shown this:**');
+    for (const told of act.toldYou) lines.push(`- *${told}*`);
+    lines.push('');
+  } else if (act.wokeYou) {
     lines.push(
       act.wokeYou === 1
-        ? 'The Storyteller woke you once.'
-        : `The Storyteller woke you ${act.wokeYou} times.`,
+        ? 'You were woken once in the night, and told nothing you could use.'
+        : `You were woken ${act.wokeYou} times in the night, and told nothing you could use.`,
     );
   }
-  for (const told of act.toldYou) lines.push(`You were shown: *${told}*`);
 
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
 

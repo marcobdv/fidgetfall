@@ -33,6 +33,18 @@ export interface EventPayloads {
     text: string;
   };
   /** Public: the square sees people step apart, and how many of them. */
+  /** The roll call at the end: every seat, named out loud, once the game is over. */
+  'game.rollcall': {
+    seats: {
+      index: number;
+      name: string;
+      characterName: string;
+      team: string;
+      alignment: string;
+      believedCharacterName?: string;
+      alive: boolean;
+    }[];
+  };
   'conversation.opened': { conversationId: string; seatIds: string[]; names: string[] };
   'conversation.closed': { conversationId: string; seatIds: string[]; names: string[]; reason: string };
   'chat.storyteller': { fromSeatId: string; toSeatId: string; text: string; fromStoryteller: boolean };

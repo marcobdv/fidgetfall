@@ -382,6 +382,28 @@ export class Game {
     this.state.winner = winner;
     this.state.endedReason = reason;
     this.emit('game.ended', { winner, reason }, PUBLIC, actorSeatId);
+    // The roll call. Every table does this and the server should not make the
+    // Storyteller type it out: once the game is over, everyone is named.
+    this.emit(
+      'game.rollcall',
+      {
+        seats: this.players().map((seat) => {
+          const character = this.character(seat.characterId);
+          const believed = this.character(seat.believedCharacterId);
+          return {
+            index: seat.index + 1,
+            name: seat.name,
+            characterName: character?.name ?? 'unassigned',
+            team: character?.team ?? 'unknown',
+            alignment: seat.alignment ?? 'unknown',
+            ...(believed ? { believedCharacterName: believed.name } : {}),
+            alive: seat.alive,
+          };
+        }),
+      },
+      PUBLIC,
+      actorSeatId,
+    );
     return ok(undefined);
   }
 

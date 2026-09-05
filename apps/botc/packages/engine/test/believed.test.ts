@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildView } from '../src/views.js';
+import { buildView, describeEvent } from '../src/views.js';
+import { canSee } from '../src/events.js';
 import { writeChronicle } from '../src/chronicle.js';
 import { table, expectOk, expectErr } from './helpers.js';
 
@@ -96,4 +97,40 @@ test('the chronicle keeps the lie until the reveal, then names it', () => {
   const after = writeChronicle(t.game, viewer, { reveal: true });
   assert.match(after, /You were never the Seer\. You were the Oaf/);
   assert.match(after, /Oaf — thought they were the Seer/);
+});
+
+test('a Lunatic is told the alignment that goes with the lie', () => {
+  const t = table(['Ana', 'Ben', 'Cal']);
+  // Ana is a good Outsider who has been told she is the demon.
+  expectOk(t.game.stAssignCharacter(t.st.id, t.byName('Ana').id, 'oaf', undefined, 'wraith'));
+
+  const own = buildView(t.game, { kind: 'seat', seatId: t.byName('Ana').id });
+  assert.equal(own.you?.character?.id, 'wraith');
+  assert.equal(own.you?.alignment, 'evil', 'a briefing reading "demon, good" gives it away');
+
+  // The Storyteller still sees what is actually true.
+  const st = buildView(t.game, { kind: 'storyteller' });
+  const ana = st.seats.find((s) => s.name === 'Ana');
+  assert.equal(ana?.character?.id, 'oaf');
+  assert.equal(ana?.alignment, 'good');
+});
+
+test('a Drunk told they are a Townsfolk is still shown good', () => {
+  const t = table(['Ana', 'Ben', 'Cal']);
+  expectOk(t.game.stAssignCharacter(t.st.id, t.byName('Ana').id, 'oaf', undefined, 'seer'));
+  assert.equal(buildView(t.game, { kind: 'seat', seatId: t.byName('Ana').id }).you?.alignment, 'good');
+});
+
+test('the roll call names everyone once the game is over', () => {
+  const t = table(['Ana', 'Ben', 'Cal'], { Ben: 'wraith', Cal: 'baker' });
+  expectOk(t.game.stAssignCharacter(t.st.id, t.byName('Ana').id, 'oaf', undefined, 'wraith'));
+  expectOk(t.game.stEndGame(t.st.id, 'good', 'done'));
+
+  const rollcall = t.game.log.find((e) => e.type === 'game.rollcall');
+  assert.ok(rollcall, 'ending a game should call the roll');
+  // Everyone sees it, not just the Storyteller.
+  assert.equal(canSee(rollcall, { kind: 'seat', seatId: t.byName('Cal').id }), true);
+  const text = describeEvent(t.game, rollcall);
+  assert.match(text, /Ana — Oaf \(outsider, good\), and thought they were the Wraith/);
+  assert.match(text, /Ben — Wraith \(demon, evil\)/);
 });

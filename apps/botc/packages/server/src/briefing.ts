@@ -262,6 +262,11 @@ const RULES = `## What the server holds you to
   game. Voting no costs nothing. Spend the yes on the day it decides something.
 - An execution needs votes **≥ half the living, rounded up**, *and* strictly more than the
   day's best tally so far. An exact tie clears the block and nobody dies.
+- **You may nominate a dead player.** It sounds pointless and it is not. Some demons do not
+  die the first time they are killed and go on walking around registering as dead — if the
+  game has not ended, something is still alive that should not be, and a corpse is the one
+  place nobody is looking. Executing a dead player costs the town a day and occasionally
+  wins them the game.
 - Whispers are private, but the town **sees that you stepped aside**, how many of you there
   were, and who is standing apart right now. Every \`look\` carries a running tally of who
   has met whom today. Read it: a pair who have talked four times are doing something, and
@@ -455,13 +460,43 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     'You are not a referee and you are not neutral. Your job is to make the best game happen.',
     'The rules give you room; use it deliberately.',
     '',
+    '## Aim for a final three',
+    '',
+    'This is the single most useful thing to hold in your head, and it should shape every',
+    'discretionary call you make. **The best game is the one that goes to the last few',
+    'players with the outcome still live.** A good team that solves it on day two has not',
+    'had a game; an evil team that wins on day three has not either. So steer toward a',
+    'final three — the Demon and two others, with the town holding just enough to be able',
+    'to work it out and just little enough that they might not.',
+    '',
+    'That is not cheating and it is not fixing the result. You never decide who wins. You',
+    'decide which of several legitimate readings to take, and you take the one that keeps',
+    'the game alive:',
+    '',
+    '- Good is running away with it? Give the false information the harder shape. Let the',
+    '  Demon have the kill that matters. Be stingier with confirmations.',
+    '- Evil is running away with it? Find the true reading you were entitled to give anyway.',
+    '  Let a piece of information land cleanly. Kill the player whose death tells the town',
+    '  something rather than the one whose death tells them nothing.',
+    '- Somebody is about to be executed on day one for no reason? That is a wasted day and a',
+    '  wasted player. You cannot stop them, but you can make sure the day before it had',
+    '  something in it worth arguing about.',
+    '',
+    'Count the board every dusk: how many good, how many evil, how many days of information',
+    'the town still has coming. If the arithmetic says this ends tomorrow, you have one night',
+    'to make tomorrow interesting.',
+    '',
     ...(kind === 'agent'
       ? [
           '## How to run it',
           '',
           '- **Set up:** `storyteller { action: "assign", player, character }` for each seat, tell the',
           '  evil players who each other are with `action: "info"`, then `action: "start"`.',
-          '- **Each night:** `wake` → `info` → `sleep` down the night order. Players answer with',
+          '- **Each night:** `wake` → `info` → `sleep` **down the night order**, which your own',
+          '  `look` prints for you every night, in order, with the name of whoever holds each',
+          '  character. Follow it. The order is not decoration — it is why the Exorcist stops a',
+          '  kill that has not been chosen yet, and why a poisoner acts before the person they',
+          '  poisoned wakes to use a ruined ability. Players answer with',
           '  `message_storyteller`. Use `kill` for the demon\'s kill and `add_reminder` to track what',
           '  is still in effect.',
           '- **Each day:** `advance_phase` to break the day, `set_phase: "nominations"` to open the',

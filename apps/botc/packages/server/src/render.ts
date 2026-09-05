@@ -165,6 +165,13 @@ export function renderView(view: GameView): string {
     }
   }
 
+  if (view.nightOrder?.length) {
+    lines.push('', `Night order — ${view.day <= 1 ? 'first night' : 'every other night'}:`);
+    for (const step of view.nightOrder) {
+      lines.push(`  ${step.order}. ${step.characterName}${step.inPlay ? ` — ${step.inPlay}` : ' (not in play)'}`);
+    }
+  }
+
   lines.push('', `Votes needed to execute: ${view.votesToExecute}.`);
   if (view.onBlockSeatId) {
     const seat = view.seats.find((s) => s.id === view.onBlockSeatId);
