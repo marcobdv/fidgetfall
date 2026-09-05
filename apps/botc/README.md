@@ -82,7 +82,7 @@ flowchart LR
 - **Six skills** in [`skills/`](skills) — one per character group plus the Storyteller —
   so an agent knows how to play its alignment, not just which tools exist.
 - **A script store** in [`data/`](data/README.md), pre-filled with the three base editions
-  and one original homebrew script.
+  and two original homebrew scripts.
 
 ## Design: the Storyteller adjudicates
 

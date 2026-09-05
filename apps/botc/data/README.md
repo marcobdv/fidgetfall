@@ -19,6 +19,7 @@ Drop a script exported from the official script tool (or from botc-scripts) into
 | `scripts/trouble-brewing.json`, `bad-moon-rising.json`, `sects-and-violets.json` | The three base editions, exactly as the script tool represents them: `_meta` plus the list of character ids. |
 | `characters/base-editions.json` | Index for those 72 characters: **id, display name, and team** only. |
 | `scripts/whispers-in-the-orchard.json` | An **original** 10-character homebrew script written for this repo, with full ability text and night order. Used by the tests and playable out of the box. |
+| `scripts/the-long-thaw.json` | An **original** 17-character script for 8-13 players, also with full text. Written after four games of watching agents play, so several characters read the public record — claims made, votes cast — rather than the grimoire. |
 
 **Ability text and night order for the three base editions are deliberately not
 committed.** Those are the publisher's copyrighted text; this repo is public and MIT

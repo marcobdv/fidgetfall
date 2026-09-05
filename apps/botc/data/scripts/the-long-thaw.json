@@ -1,0 +1,159 @@
+[
+  {
+    "id": "_meta",
+    "name": "The Long Thaw",
+    "author": "Fidgetfall",
+    "edition": "homebrew",
+    "description": "An original 17-character script for 8-13 players. The snow is going off the mountain and something that was under it is not. Built for tables where claims are addressed rather than broadcast: several characters read the public record — who claimed what to whom, who voted which way — instead of reading the grimoire, so comparing notes out loud is worth more here than anywhere."
+  },
+
+  {
+    "id": "ledgerkeeper",
+    "name": "Ledgerkeeper",
+    "team": "townsfolk",
+    "ability": "You start knowing two players. Exactly one of them is evil.",
+    "firstNight": 30,
+    "firstNightReminder": "Point to two players, exactly one of whom is evil.",
+    "reminders": ["Ledgered"]
+  },
+  {
+    "id": "roofwalker",
+    "name": "Roofwalker",
+    "team": "townsfolk",
+    "ability": "Each night*, choose a player: you learn whether they are the same alignment as you.",
+    "otherNight": 30,
+    "otherNightReminder": "The Roofwalker points to a player. Nod if that player shares their alignment; shake your head if not.",
+    "reminders": ["Walked"]
+  },
+  {
+    "id": "thawwarden",
+    "name": "Thawwarden",
+    "team": "townsfolk",
+    "ability": "Each night*, choose a player other than yourself: they cannot die tonight.",
+    "otherNight": 10,
+    "otherNightReminder": "The Thawwarden points to a player. Mark that player Sheltered until dawn.",
+    "reminders": ["Sheltered"]
+  },
+  {
+    "id": "bellringer",
+    "name": "Bellringer",
+    "team": "townsfolk",
+    "ability": "Each night*, if a player died in the night, you learn whether they were good.",
+    "otherNight": 32,
+    "otherNightReminder": "If anyone died tonight, show the Bellringer a thumbs up if they were good, thumbs down if evil.",
+    "reminders": []
+  },
+  {
+    "id": "chandler",
+    "name": "Chandler",
+    "team": "townsfolk",
+    "ability": "Once per game, during the day, publicly choose a player: you learn how many different characters they have claimed to be, to anyone.",
+    "reminders": ["Candle burned"]
+  },
+  {
+    "id": "coldsmith",
+    "name": "Coldsmith",
+    "team": "townsfolk",
+    "ability": "You cannot die at night.",
+    "reminders": []
+  },
+  {
+    "id": "reckoner",
+    "name": "Reckoner",
+    "team": "townsfolk",
+    "ability": "Each night*, you learn how many evil players voted to execute today.",
+    "otherNight": 34,
+    "otherNightReminder": "Show the Reckoner the number of evil players who voted yes on any nomination today.",
+    "reminders": []
+  },
+  {
+    "id": "cairnwright",
+    "name": "Cairnwright",
+    "team": "townsfolk",
+    "ability": "If you die at night, you are woken before dawn and learn one player's character.",
+    "otherNight": 25,
+    "otherNightReminder": "If the Cairnwright died tonight, wake them, let them point to a player, and show that player's character token.",
+    "reminders": []
+  },
+  {
+    "id": "stormglass",
+    "name": "Stormglass",
+    "team": "townsfolk",
+    "ability": "You start knowing two characters. One of them is in play and one is not. You are not told which is which.",
+    "firstNight": 31,
+    "firstNightReminder": "Show two character tokens: one in play, one not.",
+    "reminders": []
+  },
+
+  {
+    "id": "sleeper",
+    "name": "Sleeper",
+    "team": "outsider",
+    "ability": "You do not know that you are the Sleeper. You think you are a Townsfolk, but every piece of information you are given is false.",
+    "reminders": ["Is the Sleeper"]
+  },
+  {
+    "id": "hollow",
+    "name": "Hollow",
+    "team": "outsider",
+    "ability": "If you are executed, your team loses.",
+    "reminders": []
+  },
+  {
+    "id": "echo",
+    "name": "Echo",
+    "team": "outsider",
+    "ability": "You may register as evil, and as a Minion or a Demon, to any ability - even after you die.",
+    "reminders": []
+  },
+
+  {
+    "id": "frostbite",
+    "name": "Frostbite",
+    "team": "minion",
+    "ability": "Each night, choose a player: their ability does not work tonight or tomorrow.",
+    "firstNight": 10,
+    "firstNightReminder": "The Frostbite points to a player. Mark them Frozen.",
+    "otherNight": 5,
+    "otherNightReminder": "The Frostbite points to a player. Mark them Frozen.",
+    "reminders": ["Frozen"]
+  },
+  {
+    "id": "quarryman",
+    "name": "Quarryman",
+    "team": "minion",
+    "ability": "There are two extra Outsiders in play. [+2 Outsiders]",
+    "setup": true,
+    "reminders": []
+  },
+  {
+    "id": "wintermouth",
+    "name": "Wintermouth",
+    "team": "minion",
+    "ability": "Each night, choose a player. Tomorrow the Storyteller announces to the whole town that this player was seen speaking privately with the Demon. It may be true. It is usually not.",
+    "firstNight": 12,
+    "firstNightReminder": "The Wintermouth points to a player. Announce them in the morning as seen with the Demon.",
+    "otherNight": 7,
+    "otherNightReminder": "The Wintermouth points to a player. Announce them in the morning as seen with the Demon.",
+    "reminders": ["Named"]
+  },
+
+  {
+    "id": "thethaw",
+    "name": "The Thaw",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If nobody died in the night before, you may choose two players instead.",
+    "otherNight": 20,
+    "otherNightReminder": "The Thaw points to a player, or to two players if nobody died last night. They die.",
+    "reminders": ["Dead", "Fed"]
+  },
+  {
+    "id": "thehollowing",
+    "name": "The Hollowing",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If they had publicly claimed a character, you learn one good character that is not in play.",
+    "otherNight": 20,
+    "otherNightReminder": "The Hollowing points to a player. They die. If that player had publicly claimed a character, show one good character token that is not in play.",
+    "reminders": ["Dead"]
+  }
+]
