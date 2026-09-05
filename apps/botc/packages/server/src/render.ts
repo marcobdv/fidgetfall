@@ -32,7 +32,10 @@ const seatLine = (seat: SeatView, youSeatId: string | undefined): string => {
       `stories: ${seat.claimsMade.map((c) => `${c.character.name} to ${c.toName ?? 'the town'}`).join('; ')}`,
     );
   }
-  if (seat.character) bits.push(`${seat.character.name}${seat.alignment ? ` / ${seat.alignment}` : ''}`);
+  if (seat.character)
+    bits.push(
+      `${seat.character.name}${seat.alignment ? ` / ${seat.alignment}` : ''}${seat.believedCharacter ? ` (thinks: ${seat.believedCharacter.name})` : ''}`,
+    );
   if (seat.reminders?.length) bits.push(`reminders: ${seat.reminders.map((r) => r.label).join(', ')}`);
   const you = seat.id === youSeatId ? ' (you)' : '';
   const line = `  ${seat.index + 1}. ${seat.name}${you} — ${bits.join(', ')}`;

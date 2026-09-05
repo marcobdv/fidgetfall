@@ -307,12 +307,18 @@ export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOpt
   );
   const you = viewer.kind === 'seat' ? game.seat(viewer.seatId) : undefined;
   if (you) {
-    const character = game.character(you.characterId);
-    out.push(
-      character
-        ? `You sat ${you.index + 1}${nth(you.index + 1)}, as the ${character.name}.`
-        : `You sat ${you.index + 1}${nth(you.index + 1)}.`,
-    );
+    const seatNo = `${you.index + 1}${nth(you.index + 1)}`;
+    const truth = game.character(you.characterId);
+    const believed = game.character(you.believedCharacterId);
+    // Until the reveal you get the game you thought you played, which for a Drunk is
+    // the only one they had. Afterwards, the sentence that recontextualises all of it.
+    if (believed && reveal && truth) {
+      out.push(`You sat ${seatNo}, as the ${believed.name}. You were never the ${believed.name}. You were the ${truth.name}, and every word I whispered to you was false.`);
+    } else if (believed) {
+      out.push(`You sat ${seatNo}, as the ${believed.name}.`);
+    } else {
+      out.push(truth ? `You sat ${seatNo}, as the ${truth.name}.` : `You sat ${seatNo}.`);
+    }
   }
 
   for (const [index, act] of acts.entries()) {
@@ -345,8 +351,12 @@ export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOpt
     out.push('', '## The grimoire', '', '| Seat | Player | Character | Team | Fate |', '|---|---|---|---|---|');
     for (const seat of game.players()) {
       const character = game.character(seat.characterId);
+      const believed = game.character(seat.believedCharacterId);
+      const name = believed
+        ? `${character?.name ?? '—'} — thought they were the ${believed.name}`
+        : (character?.name ?? '—');
       out.push(
-        `| ${seat.index + 1} | ${seat.name} | ${character?.name ?? '—'} | ${character?.team ?? '—'}${seat.alignment ? ` (${seat.alignment})` : ''} | ${seat.alive ? 'survived' : 'died'} |`,
+        `| ${seat.index + 1} | ${seat.name} | ${name} | ${character?.team ?? '—'}${seat.alignment ? ` (${seat.alignment})` : ''} | ${seat.alive ? 'survived' : 'died'} |`,
       );
     }
   }
@@ -388,9 +398,10 @@ function postMortem(game: Game): string[] {
     const notes = game.notesFor(seat.id);
     if (!notes.length) continue;
     const own = game.character(seat.characterId);
+    const thought = game.character(seat.believedCharacterId);
     beliefs.push(
       '',
-      `**${seat.name}** — ${own ? `${own.name}, ${seat.alignment ?? 'good'}` : 'no character'}`,
+      `**${seat.name}** — ${own ? `${own.name}, ${seat.alignment ?? 'good'}` : 'no character'}${thought ? ` (believed they were the ${thought.name}, so read every line below knowing they were working from lies)` : ''}`,
     );
     for (const note of notes) {
       const target = game.seat(note.targetSeatId);

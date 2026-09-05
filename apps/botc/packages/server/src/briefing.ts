@@ -440,6 +440,12 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     '## Giving information',
     '',
     '- Decide what makes the better game, then find the reading of the rules that supports it.',
+    '- **A character who is told they are somebody else** — the Drunk, the Sleeper — is set up',
+    '  with `assign { player, character: <the truth>, believes: <what you tell them> }`. They',
+    '  will read the believed character in their own briefing and nowhere will they see the',
+    '  truth; you see both. Then feed them false information all game, in the shape their',
+    '  believed character expects. A Drunk who is fed obvious nonsense is wasted — feed them',
+    '  something the town will act on.',
     '- False information must feel exactly like true information. Make it plausible and',
     '  load-bearing, never obviously wrong.',
     '- Give the good team something to talk about on day one. A town with nothing to discuss',
@@ -474,7 +480,8 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     })(),
     ...room.game.players().map((seat) => {
       const character = room.game.character(seat.characterId);
-      return `- ${seat.index + 1}. ${seat.name} — ${character ? `${character.name} (${character.team}, ${seat.alignment})` : 'unassigned'}${seat.alive ? '' : ', dead'}${seat.reminders.length ? ` · ${seat.reminders.map((r) => r.label).join(', ')}` : ''}`;
+      const believed = room.game.character(seat.believedCharacterId);
+      return `- ${seat.index + 1}. ${seat.name} — ${character ? `${character.name} (${character.team}, ${seat.alignment})` : 'unassigned'}${believed ? `, thinks they are the ${believed.name}` : ''}${seat.alive ? '' : ', dead'}${seat.reminders.length ? ` · ${seat.reminders.map((r) => r.label).join(', ')}` : ''}`;
     }),
   ].join('\n');
 }

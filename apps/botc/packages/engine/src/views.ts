@@ -36,6 +36,12 @@ export interface SeatView {
   claimsMade?: { toName: string | null; character: Character }[];
   /** Present only for your own seat, or every seat when you are the Storyteller. */
   character?: Character;
+  /**
+   * Storyteller only, and only for a player who has been lied to: what they think
+   * they are, next to the `character` they actually are. A player's own view never
+   * carries this — they just see the lie in `character`, which is the point.
+   */
+  believedCharacter?: Character;
   alignment?: Alignment;
   /** Grimoire-only. */
   reminders?: ReminderToken[];
@@ -169,8 +175,12 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         }
       }
       if (isST(viewer) || mine) {
-        const character = game.character(seat.characterId);
+        // A lied-to player sees only the lie; the Storyteller sees the truth and the lie.
+        const truth = game.character(seat.characterId);
+        const believed = game.character(seat.believedCharacterId);
+        const character = isST(viewer) ? truth : (believed ?? truth);
         if (character) view.character = character;
+        if (isST(viewer) && believed) view.believedCharacter = believed;
         if (seat.alignment) view.alignment = seat.alignment;
       }
       if (isST(viewer)) {
@@ -199,7 +209,8 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         ? (() => {
             const seat = game.seat(viewer.seatId);
             if (!seat) return null;
-            const character = game.character(seat.characterId);
+            const character =
+              game.character(seat.believedCharacterId) ?? game.character(seat.characterId);
             return {
               seatId: seat.id,
               name: seat.name,

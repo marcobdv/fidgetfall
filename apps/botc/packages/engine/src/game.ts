@@ -697,6 +697,7 @@ export class Game {
     targetSeatId: string,
     characterId: string,
     alignment?: Alignment,
+    believesCharacterId?: string,
   ): Result<void> {
     const st = this.requireStoryteller(actorSeatId);
     if (!st.ok) return st;
@@ -704,26 +705,41 @@ export class Game {
     if (!to.ok) return to;
     const character = this.character(characterId);
     if (!character) return err(`"${characterId}" is not on this script`);
+    // The Drunk and the Sleeper are told they are somebody else. The grimoire keeps
+    // the truth; the player's own view is handed the lie, and never the two together.
+    const believed = believesCharacterId ? this.character(believesCharacterId) : undefined;
+    if (believesCharacterId && !believed) return err(`"${believesCharacterId}" is not on this script`);
+    if (believed && believed.id === character.id) {
+      return err(`${to.value.name} already is the ${character.name} — leave "believes" off`);
+    }
 
     to.value.characterId = character.id;
+    to.value.believedCharacterId = believed?.id;
     to.value.alignment =
       alignment ?? (character.team === 'minion' || character.team === 'demon' ? 'evil' : 'good');
     if (character.team === 'traveller') to.value.isTraveller = true;
 
+    // What the seat is told. For a Drunk this is the lie, and it is all they ever see.
+    const shown = believed ?? character;
     this.emit(
       'player.character',
       {
         seatId: to.value.id,
-        characterId: character.id,
-        characterName: character.name,
-        team: character.team,
+        characterId: shown.id,
+        characterName: shown.name,
+        team: shown.team,
       },
       toSeats(to.value.id),
       actorSeatId,
     );
     this.emit(
       'st.grimoire',
-      { seatId: to.value.id, change: `${to.value.name} is the ${character.name} (${to.value.alignment})` },
+      {
+        seatId: to.value.id,
+        change: believed
+          ? `${to.value.name} is the ${character.name} (${to.value.alignment}), and thinks they are the ${believed.name}`
+          : `${to.value.name} is the ${character.name} (${to.value.alignment})`,
+      },
       ST_ONLY,
       actorSeatId,
     );

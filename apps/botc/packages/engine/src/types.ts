@@ -66,6 +66,13 @@ export interface Seat {
   connected: boolean;
   /** Grimoire data: only the Storyteller and the seat's owner ever see these. */
   characterId?: string;
+  /**
+   * What this player has been *told* they are, when that is a lie. The Drunk and
+   * the Sleeper are the whole reason this field exists: the grimoire holds the
+   * truth in `characterId`, the player's own view shows this instead, and only the
+   * Storyteller ever sees both. Unset for everyone who is what they think they are.
+   */
+  believedCharacterId?: string;
   alignment?: Alignment;
   reminders: ReminderToken[];
   hasNominatedToday: boolean;

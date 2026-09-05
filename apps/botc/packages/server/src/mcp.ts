@@ -78,6 +78,7 @@ interface StArgs {
   player?: string | undefined;
   text?: string | undefined;
   character?: string | undefined;
+  believes?: string | undefined;
   alignment?: 'good' | 'evil' | undefined;
   phase?: 'night' | 'day' | 'nominations' | 'dusk' | undefined;
   label?: string | undefined;
@@ -118,6 +119,7 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
         target: need(args.player, 'player'),
         character: need(args.character, 'character'),
         ...(args.alignment ? { alignment: args.alignment } : {}),
+        ...(args.believes ? { believes: args.believes } : {}),
       };
       break;
     case 'set_alignment':
@@ -599,7 +601,9 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         [
           'Everything only the Storyteller may do. Pick an action:',
           '  start — begin the game once everyone is seated',
-          '  assign (player, character, alignment?) — put a character in the grimoire',
+          '  assign (player, character, alignment?, believes?) — put a character in the grimoire.',
+          '    "believes" is for the Drunk and the Sleeper: character is the truth, believes is',
+          '    what you tell them they are. They see only the lie; you see both.',
           '  advance_phase / set_phase (phase) — night -> day -> nominations -> dusk',
           '  wake (player, text? as the prompt) / sleep (player)',
           '  info (player, text) — give a player what their ability shows them',
@@ -627,6 +631,10 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         player: z.string().optional().describe('Name or seat number of the player this acts on.'),
         text: z.string().optional().describe('Message, info, prompt, cause or reason, depending on the action.'),
         character: z.string().optional().describe('Character id, for assign.'),
+        believes: z
+          .string()
+          .optional()
+          .describe('Character id this player is told they are, when that is a lie (Drunk, Sleeper).'),
         alignment: z.enum(['good', 'evil']).optional(),
         phase: z.enum(['night', 'day', 'nominations', 'dusk']).optional(),
         label: z.string().optional().describe('Reminder token text.'),

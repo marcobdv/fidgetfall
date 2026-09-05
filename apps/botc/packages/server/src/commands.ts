@@ -42,7 +42,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_start') }),
   z.object({ type: z.literal('st_advance_phase') }),
   z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'nominations', 'dusk']) }),
-  z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional() }),
+  z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional(), believes: z.string().optional() }),
   z.object({ type: z.literal('st_set_alignment'), target: z.string(), alignment: z.enum(['good', 'evil']) }),
   z.object({ type: z.literal('st_add_reminder'), target: z.string(), label: z.string(), source: z.string().optional() }),
   z.object({ type: z.literal('st_remove_reminder'), target: z.string(), reminderId: z.string() }),
@@ -157,7 +157,13 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
     case 'st_assign': {
       const to = target(room, command.target);
       return to.ok
-        ? game.stAssignCharacter(seatId, to.value.id, command.character, command.alignment)
+        ? game.stAssignCharacter(
+            seatId,
+            to.value.id,
+            command.character,
+            command.alignment,
+            command.believes,
+          )
         : to;
     }
     case 'st_set_alignment': {
