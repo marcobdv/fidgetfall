@@ -26,3 +26,6 @@ LOCAL.md
 .vs/
 .idea/
 *.suo
+
+# Per-game event journals (the record, not the repo)
+apps/botc/data/journal/

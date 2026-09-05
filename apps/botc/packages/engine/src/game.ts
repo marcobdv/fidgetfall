@@ -125,6 +125,47 @@ export class Game {
     );
   }
 
+  /**
+   * A game's state and its whole event log, as plain JSON.
+   *
+   * Replaying 39 event types through a reducer would be a second implementation
+   * of the rules that could drift from the first. A snapshot cannot drift: it is
+   * what the engine actually had. The log rides alongside it because the
+   * chronicle is written from events, not from state.
+   */
+  serialise(): unknown {
+    return {
+      state: {
+        ...this.state,
+        notes: [...this.state.notes].map(([viewer, byTarget]) => [viewer, [...byTarget]]),
+      },
+      log: this.log,
+    };
+  }
+
+  /** Rebuild a finished game so today's chronicle can be run over it. */
+  static restore(snapshot: unknown): Game {
+    const raw = snapshot as { state: Record<string, unknown>; log: AnyEvent[] };
+    const state = raw.state;
+    const game = new Game({
+      id: String(state['id']),
+      name: String(state['name']),
+      joinCode: String(state['joinCode'] ?? '----'),
+      script: state['script'] as GameScript,
+      storytellerName: 'Storyteller',
+    });
+    const notes = new Map<string, Map<string, SeatNote>>(
+      ((state['notes'] as [string, [string, SeatNote][]][]) ?? []).map(([viewer, entries]) => [
+        viewer,
+        new Map(entries),
+      ]),
+    );
+    Object.assign(game.state, state, { notes });
+    game.log.length = 0;
+    game.log.push(...(raw.log ?? []));
+    return game;
+  }
+
   // ---------------------------------------------------------------- helpers
 
   private emit<T extends EventType>(

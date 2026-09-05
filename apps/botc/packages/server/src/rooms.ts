@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Game, buildView, type AnyEvent, type GameScript, type SeatKind, type Viewer } from '@botc/engine';
+import type { Journal } from './journal.js';
 
 export interface Session {
   token: string;
@@ -18,9 +19,31 @@ export class Room {
   readonly game: Game;
   private readonly listeners = new Set<() => void>();
   private clock: ReturnType<typeof setInterval> | undefined;
+  private readonly journal: Journal | undefined;
+  private journaled = 0;
 
-  constructor(game: Game) {
+  constructor(game: Game, journal?: Journal) {
     this.game = game;
+    this.journal = journal;
+  }
+
+  /**
+   * Append anything the game has produced since the last flush. Called on every
+   * state change and once a second by the clock, so a private command that
+   * notifies nobody is still on disk within a second of happening.
+   */
+  flush(): void {
+    if (!this.journal) return;
+    let sawPhase = false;
+    for (; this.journaled < this.game.log.length; this.journaled += 1) {
+      const event = this.game.log[this.journaled];
+      if (!event) continue;
+      this.journal.append(this.game.state.id, event);
+      if (event.type === 'phase.changed' || event.type === 'game.ended') sawPhase = true;
+    }
+    // A snapshot each phase is cheap and means a crash costs at most one phase of
+    // grimoire state, while the events either side of it are always complete.
+    if (sawPhase) this.journal.snapshot(this.game.state.id, this.game.serialise());
   }
 
   /**
@@ -35,6 +58,7 @@ export class Room {
         return;
       }
       if (this.game.tick(Date.now())) this.notify();
+      this.flush();
     }, intervalMs);
     this.clock.unref?.();
   }
@@ -74,6 +98,7 @@ export class Room {
   }
 
   notify(): void {
+    this.flush();
     for (const listener of [...this.listeners]) {
       try {
         listener();
@@ -112,6 +137,8 @@ export class RoomManager {
   private readonly rooms = new Map<string, Room>();
   private readonly sessions = new Map<string, Session>();
 
+  constructor(readonly journal?: Journal) {}
+
   create(input: CreateGameInput): { room: Room; session: Session } {
     const id = randomUUID().slice(0, 8);
     const game = new Game({
@@ -122,7 +149,13 @@ export class RoomManager {
       storytellerName: input.storytellerName,
       ...(input.storytellerKind ? { storytellerKind: input.storytellerKind } : {}),
     });
-    const room = new Room(game);
+    this.journal?.open(id, {
+      name: game.state.name,
+      scriptId: input.script.id,
+      startedAt: game.state.createdAt,
+    });
+    const room = new Room(game, this.journal);
+    room.flush();
     room.startClock();
     this.rooms.set(id, room);
     const session = this.issue(room, game.state.storytellerSeatId);

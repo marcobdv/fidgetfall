@@ -5,6 +5,7 @@ import { handleMcpRequest } from './mcp.js';
 import { RoomManager } from './rooms.js';
 import { ScriptStore } from './scriptStore.js';
 import { attachWebSocket } from './wsApi.js';
+import { Journal } from './journal.js';
 
 const MAX_MCP_BODY = 1024 * 1024;
 const SWEEP_INTERVAL_MS = 15 * 60 * 1000;
@@ -32,7 +33,11 @@ export interface StartedServer {
 export async function start(overrides: NodeJS.ProcessEnv = {}): Promise<StartedServer> {
   const config = loadConfig({ ...process.env, ...overrides });
   const scripts = new ScriptStore(config);
-  const rooms = new RoomManager();
+  // Games used to be memory-only, so a restart took the record with it and a
+  // renderer fix could never reach a game already played. Every event is now on
+  // disk; BOTC_JOURNAL_DIR=off opts out.
+  const journalDir = config.journalDir;
+  const rooms = new RoomManager(journalDir ? new Journal(journalDir) : undefined);
   const deps = { config, rooms, scripts };
 
   const server = createServer((req, res) => {

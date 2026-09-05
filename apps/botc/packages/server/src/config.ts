@@ -26,6 +26,8 @@ export interface Config {
   rolesFile?: string;
   /** Shared secret required to create a game, if set. */
   adminToken?: string;
+  /** Where per-game event logs are appended. Undefined disables journalling. */
+  journalDir?: string;
   publicUrl: string;
 }
 
@@ -33,6 +35,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const dataDir = env['BOTC_DATA_DIR']
     ? resolve(env['BOTC_DATA_DIR'])
     : (findUp('data/scripts') ? dirname(findUp('data/scripts') as string) : resolve('data'));
+  const journalRaw = env['BOTC_JOURNAL_DIR'] ?? join(dataDir, 'journal');
+  const journalDir = journalRaw === 'off' ? undefined : resolve(journalRaw);
   const clientDir = env['BOTC_CLIENT_DIR']
     ? resolve(env['BOTC_CLIENT_DIR'])
     : (findUp('packages/client/public') ?? resolve('packages/client/public'));
@@ -53,5 +57,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   else if (existsSync(localRoles)) config.rolesFile = localRoles;
 
   if (env['BOTC_ADMIN_TOKEN']) config.adminToken = env['BOTC_ADMIN_TOKEN'];
+  if (journalDir) config.journalDir = journalDir;
   return config;
 }
