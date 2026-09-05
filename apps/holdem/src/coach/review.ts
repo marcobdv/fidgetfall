@@ -11,6 +11,7 @@ import { parseCards } from "../engine/cards.js";
 import type { CompletedHand } from "../engine/table.js";
 import type { Street } from "../engine/types.js";
 import { equityVsRandom } from "./equity.js";
+import { pressureOf } from "./pressure.js";
 
 export interface ReviewMoment {
   street: Street;
@@ -108,6 +109,11 @@ function cardCode(card: number): string {
 
 function judge(base: Omit<ReviewMoment, "verdict" | "note">): ReviewMoment {
   const { action, equityPct, breakEvenPct, toCall } = base;
+  // The same standard the live coach applies, so a review never praises a call
+  // the coach would have warned about. Stacks are not in the event log, so this
+  // reads the bet size relative to the pot only.
+  const pressure = pressureOf({ toCall, pot: base.potBefore });
+  const demanded = (breakEvenPct ?? 0) + pressure.margin * 100;
 
   if (breakEvenPct === null) {
     // Nothing to call: the only question is whether a check gave up value.
@@ -128,7 +134,7 @@ function judge(base: Omit<ReviewMoment, "verdict" | "note">): ReviewMoment {
   const margin = equityPct - breakEvenPct;
 
   if (action === "fold") {
-    if (margin > 12) {
+    if (margin > 12 + pressure.margin * 100) {
       return {
         ...base,
         verdict: "tight",
@@ -143,24 +149,29 @@ function judge(base: Omit<ReviewMoment, "verdict" | "note">): ReviewMoment {
   }
 
   if (action === "call" || action === "raise" || action === "bet") {
-    if (margin < -12) {
+    const adjusted = margin - pressure.margin * 100;
+    if (adjusted < -12) {
       return {
         ...base,
         verdict: "loose",
-        note: `You put in ${base.amount} needing ${Math.round(breakEvenPct)}% to break even with only about ${Math.round(equityPct)}%. This is the leak that costs the most over time.`,
+        note: `You put in ${base.amount} needing ${Math.round(demanded)}% with only about ${Math.round(equityPct)}%. This is the leak that costs the most over time.`,
       };
     }
-    if (margin < 3) {
+    if (adjusted < 3) {
       return {
         ...base,
         verdict: "thin",
-        note: `A close one: ${Math.round(equityPct)}% against a ${Math.round(breakEvenPct)}% price. Defensible, but nothing to rely on.`,
+        note:
+          `A close one: ${Math.round(equityPct)}% against a ${Math.round(breakEvenPct)}% price` +
+          (pressure.margin > 0
+            ? `, and a bet that size means a stronger range than random — nearer ${Math.round(demanded)}% in practice. Defensible, but nothing to rely on.`
+            : ". Defensible, but nothing to rely on."),
       };
     }
     return {
       ...base,
       verdict: "good",
-      note: `Well priced: ${Math.round(equityPct)}% equity against a ${Math.round(breakEvenPct)}% break-even.`,
+      note: `Well priced: ${Math.round(equityPct)}% equity against a ${Math.round(demanded)}% bar.`,
     };
   }
 

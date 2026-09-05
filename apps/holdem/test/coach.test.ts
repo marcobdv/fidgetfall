@@ -4,6 +4,7 @@ import { equityVsRandom } from "../src/coach/equity.js";
 import { countOuts } from "../src/coach/outs.js";
 import { coach, startingHandLabel } from "../src/coach/advice.js";
 import { reviewHand } from "../src/coach/review.js";
+import { pressureOf } from "../src/coach/pressure.js";
 import { Table, type TableConfig } from "../src/engine/table.js";
 
 const cards = (text: string) => parseCards(text);
@@ -77,6 +78,24 @@ describe("outs", () => {
   it("reports nothing to draw to once the river is out", () => {
     expect(countOuts(cards("As 4s"), cards("Ks 9s 2d 7h Tc")).count).toBe(0);
   });
+
+  it("does not count cards that pair the board for everyone", () => {
+    // KJ on A-8-4. A king or a jack is an out; an eight, a four or an ace just
+    // pairs the board, which every player at the table shares.
+    const result = countOuts(cards("Kd Js"), cards("8d 4c Ac"));
+    expect(result.count).toBe(6);
+    expect(result.groups.flatMap((g) => g.cards).sort()).toEqual(
+      ["Jc", "Jd", "Jh", "Kc", "Kh", "Ks"].sort(),
+    );
+  });
+
+  it("still counts a card that pairs a hole card even when the board is paired", () => {
+    // Q7 on 5-5-2: a queen or a seven makes two pair, which the board does not
+    // hand to everyone.
+    const result = countOuts(cards("Qd 7s"), cards("5c 5h 2d"));
+    expect(result.count).toBe(6);
+    expect(result.groups[0]!.makes).toBe("Two pair");
+  });
 });
 
 describe("advice", () => {
@@ -117,6 +136,22 @@ describe("advice", () => {
     expect(advice.handDescription).toMatch(/Three of a kind/);
   });
 
+  it("calls a clear edge clear, rather than describing it as thin", () => {
+    const advice = coach({
+      hole: cards("Kd Js"),
+      board: cards("8d 4c Ac"),
+      opponents: 1,
+      pot: 1000,
+      toCall: 60,
+      street: "flop",
+      stack: 2000,
+      legal: { ...legalFacing(60), canRaise: false, maxRaiseTo: 0 },
+    });
+    expect(advice.suggestion).toBe("Call");
+    expect(advice.confidence).toBe("high");
+    expect(advice.tips.find((t) => t.label === "Why")!.text).toMatch(/comfortably ahead/);
+  });
+
   it("shows the arithmetic rather than only the answer", () => {
     const advice = coach({
       hole: cards("As 4s"),
@@ -144,6 +179,101 @@ describe("advice", () => {
     });
     expect(advice.suggestion).toBe("Bet");
     expect(advice.potOdds).toBeNull();
+  });
+});
+
+describe("reading the bet size", () => {
+  it("treats a small bet as barely narrowing anyone's range", () => {
+    const p = pressureOf({ toCall: 20, pot: 200 });
+    expect(p.level).toBe("light");
+    expect(p.note).toBeNull();
+  });
+
+  it("treats a pot-sized bet as a real commitment", () => {
+    expect(pressureOf({ toCall: 200, pot: 200 }).level).toBe("shove");
+    expect(pressureOf({ toCall: 120, pot: 200 }).level).toBe("heavy");
+  });
+
+  it("treats a call for most of the stack as a stack-off however small the pot", () => {
+    const p = pressureOf({ toCall: 600, pot: 5000, stack: 1000 });
+    expect(p.level).toBe("shove");
+    expect(p.note).toMatch(/most of your stack/);
+  });
+
+  it("asks for nothing extra when there is no bet to face", () => {
+    expect(pressureOf({ toCall: 0, pot: 200 })).toMatchObject({ level: "none", margin: 0 });
+  });
+
+  it("demands progressively more equity as the bet grows", () => {
+    const light = pressureOf({ toCall: 20, pot: 200 }).margin;
+    const heavy = pressureOf({ toCall: 120, pot: 200 }).margin;
+    const shove = pressureOf({ toCall: 400, pot: 200 }).margin;
+    expect(light).toBeLessThan(heavy);
+    expect(heavy).toBeLessThan(shove);
+  });
+});
+
+describe("the coach against a big bet", () => {
+  // The spot that beat a test agent: a hand that clears the raw pot-odds price
+  // by a whisker, facing a shove. The old coach said "Call" with medium
+  // confidence; against a shoving range that is a losing recommendation.
+  const marginalVsShove = {
+    hole: cards("Kd Js"),
+    board: cards("8d 4c Ac"),
+    opponents: 1,
+    pot: 1000,
+    toCall: 900,
+    street: "flop" as const,
+    stack: 900,
+    legal: { ...legalFacing(900), minRaiseTo: 1800, maxRaiseTo: 900 },
+  };
+
+  it("stops recommending a coin flip for a whole stack", () => {
+    const advice = coach(marginalVsShove);
+    expect(advice.pressure.level).toBe("shove");
+    expect(advice.suggestion).toBe("Fold");
+  });
+
+  it("says why, in terms of the opponent's range rather than the raw price", () => {
+    const advice = coach(marginalVsShove);
+    const read = advice.tips.find((t) => t.label === "Read the bet")!;
+    expect(read.text).toMatch(/random hand/);
+    expect(read.text).toMatch(/overestimate/);
+  });
+
+  it("quotes a bar that matches the standard it applied", () => {
+    const advice = coach(marginalVsShove);
+    const why = advice.tips.find((t) => t.label === "Why")!;
+    // The raw price and the adjusted bar are both shown, and the shortfall is
+    // measured against the adjusted one — no incoherent arithmetic.
+    expect(why.text).toMatch(/once you allow for the size of the bet/);
+    const shortfall = Number(/short by (\d+)%/.exec(why.text)![1]);
+    const equity = Math.round(advice.equity.equity * 100);
+    const bar = Math.round((advice.potOdds!.breakEven + advice.pressure.margin) * 100);
+    expect(shortfall).toBeCloseTo(bar - equity, 0);
+  });
+
+  it("still calls comfortably when the edge is real", () => {
+    const advice = coach({
+      ...marginalVsShove,
+      hole: cards("Ah Ad"),
+    });
+    expect(["Call", "Raise"]).toContain(advice.suggestion);
+  });
+
+  it("leaves a cheap call alone", () => {
+    const advice = coach({
+      hole: cards("As 4s"),
+      board: cards("Ks 9s 2d"),
+      opponents: 1,
+      pot: 300,
+      toCall: 20,
+      street: "flop",
+      stack: 2000,
+      legal: legalFacing(20),
+    });
+    expect(advice.pressure.level).toBe("light");
+    expect(advice.tips.find((t) => t.label === "Read the bet")).toBeUndefined();
   });
 });
 

@@ -13,6 +13,7 @@ import { describeHand, evaluate, HandCategory, rankPlural } from "../engine/hand
 import type { LegalActions, Street } from "../engine/types.js";
 import { equityVsRandom, type EquityResult } from "./equity.js";
 import { countOuts, type OutsResult } from "./outs.js";
+import { pressureOf, type Pressure } from "./pressure.js";
 
 export interface CoachInput {
   hole: readonly Card[];
@@ -24,6 +25,8 @@ export interface CoachInput {
   legal?: LegalActions | null;
   /** Seats still to act behind, for a note on position. */
   playersLeftToAct?: number;
+  /** The player's remaining stack, so the coach can spot a stack-off. */
+  stack?: number;
   seed?: number;
   samples?: number;
 }
@@ -47,6 +50,8 @@ export interface CoachAdvice {
     /** Equity needed to break even on the call, as a fraction. */
     breakEven: number;
   } | null;
+  /** How much the size of the bet being faced should temper the equity number. */
+  pressure: Pressure;
   /** The action the heuristic favours, matched to what is actually legal. */
   suggestion: string;
   confidence: "low" | "medium" | "high";
@@ -137,7 +142,17 @@ export function coach(input: CoachInput): CoachAdvice {
     });
   }
 
-  const { suggestion, confidence, extraTips } = suggest(input, equity, outs, potOdds, madeHand);
+  const pressure = pressureOf({ toCall, pot, stack: input.stack });
+  if (pressure.note) tips.push({ label: "Read the bet", text: pressure.note });
+
+  const { suggestion, confidence, extraTips } = suggest(
+    input,
+    equity,
+    outs,
+    potOdds,
+    madeHand,
+    pressure,
+  );
   tips.push(...extraTips);
 
   if (input.playersLeftToAct !== undefined && input.playersLeftToAct > 0 && input.street === "preflop") {
@@ -152,6 +167,7 @@ export function coach(input: CoachInput): CoachAdvice {
     equity,
     outs,
     potOdds,
+    pressure,
     suggestion,
     confidence,
     tips,
@@ -164,13 +180,16 @@ function suggest(
   outs: OutsResult,
   potOdds: CoachAdvice["potOdds"],
   madeHand: ReturnType<typeof evaluate> | null,
+  pressure: Pressure,
 ): { suggestion: string; confidence: CoachAdvice["confidence"]; extraTips: CoachTip[] } {
   const legal = input.legal;
   const extraTips: CoachTip[] = [];
 
-  // Facing a bet: the call is decided by whether equity clears the price.
+  // Facing a bet: the call is decided by whether equity clears the price — plus
+  // a margin scaled to how much the bet itself narrows the opponent's range.
+  // The reported equity stays honest; what moves is how much of it we demand.
   if (potOdds && legal?.canCall) {
-    const margin = equity.equity - potOdds.breakEven;
+    const margin = equity.equity - potOdds.breakEven - pressure.margin;
     if (margin > 0.15 && legal.canRaise) {
       return {
         suggestion: "Raise",
@@ -178,33 +197,43 @@ function suggest(
         extraTips: [
           {
             label: "Why",
-            text: `Your equity (${pct(equity.equity)}) is well clear of the ${pct(potOdds.breakEven)} the call needs. When you are this far ahead of the price, calling leaves money behind — build the pot.`,
+            text:
+              `Your equity (${pct(equity.equity)}) is well clear of ${target(potOdds, pressure)}. ` +
+              "When you are this far ahead of the price, calling leaves money behind — build the pot.",
           },
         ],
       };
     }
     if (margin > 0) {
+      // A big margin lands here too whenever raising is not on offer, so the
+      // wording has to fit both a hair-thin call and a clear one.
+      const comfortable = margin > 0.12;
       return {
         suggestion: "Call",
-        confidence: margin > 0.05 ? "medium" : "low",
+        confidence: comfortable ? "high" : margin > 0.05 && pressure.level !== "shove" ? "medium" : "low",
         extraTips: [
           {
             label: "Why",
-            text: `The price is ${pct(potOdds.breakEven)} and you have about ${pct(equity.equity)} — a thin but profitable call against random hands. Real opponents bet their good hands more than their bad ones, so treat a thin edge as a coin flip.`,
+            text: comfortable
+              ? `You have about ${pct(equity.equity)} against ${target(potOdds, pressure)} — comfortably ahead of the price, so calling is clear.`
+              : `You have about ${pct(equity.equity)} against ${target(potOdds, pressure)} — enough, but not by much. ` +
+                "Real opponents bet their good hands more often than their bad ones, so treat a thin edge as a coin flip.",
           },
         ],
       };
     }
-    const shortfall = potOdds.breakEven - equity.equity;
+    // Derived from the rounded figures the player can see, not the raw
+    // fractions, so the three numbers in this sentence actually add up.
+    const shortfall = round(potOdds.breakEven + pressure.margin) - round(equity.equity);
     extraTips.push({
       label: "Why",
       text:
-        `You need ${pct(potOdds.breakEven)} and have about ${pct(equity.equity)} — short by ${pct(shortfall)}. ` +
+        `You have about ${pct(equity.equity)} against ${target(potOdds, pressure)} — short by ${shortfall}%. ` +
         (input.street !== "river" && outs.count > 0
           ? "A draw can still be worth calling if you expect to win a lot more when it hits (implied odds), but not on pot odds alone."
           : "Folding here costs you nothing you had a claim to."),
     });
-    return { suggestion: "Fold", confidence: shortfall > 0.1 ? "high" : "low", extraTips };
+    return { suggestion: "Fold", confidence: shortfall > 10 ? "high" : "low", extraTips };
   }
 
   // Nobody has bet: the question is whether to bet ourselves.
@@ -242,6 +271,24 @@ function suggest(
   return { suggestion: "Fold", confidence: "low", extraTips };
 }
 
+/**
+ * The bar this call has to clear: the raw pot-odds break-even, plus whatever
+ * margin the size of the bet demands. Every branch quotes it the same way so
+ * the number the player reads is the number the suggestion used.
+ */
+function target(potOdds: NonNullable<CoachAdvice["potOdds"]>, pressure: Pressure): string {
+  const breakEven = pct(potOdds.breakEven);
+  if (pressure.margin <= 0) return `the ${breakEven} the price needs`;
+  return (
+    `the ${breakEven} the price needs — call it ${pct(potOdds.breakEven + pressure.margin)} ` +
+    `once you allow for the size of the bet`
+  );
+}
+
+function round(fraction: number): number {
+  return Math.round(fraction * 100);
+}
+
 function pct(fraction: number): string {
-  return `${Math.round(fraction * 100)}%`;
+  return `${round(fraction)}%`;
 }

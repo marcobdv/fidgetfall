@@ -38,7 +38,7 @@ down**. That is the whole setup.
 Development:
 
 ```bash
-npm test             # 109 tests: rules, evaluator, coach, room, HTTP, MCP
+npm test             # 125 tests: rules, evaluator, coach, room, HTTP, MCP
 npm run typecheck
 ```
 
@@ -51,14 +51,22 @@ legal, and the **Coach** panel shows the arithmetic behind the decision:
 - your equity against the opponents still in the hand;
 - your outs, grouped by what they make, with the rule of two and four;
 - the pot odds — what fraction of the time you need to win to break even on the call;
+- **how much to distrust that number**, given the size of the bet you are facing;
 - a suggested action, with the reasoning that produced it.
 
 When the hand ends, **Last hand** replays your decisions and recomputes your equity at
 each one against the price you were being offered, and names the decision that mattered.
 
-The coach measures equity against *random* hands, which flatters marginal holdings — real
-opponents fold their worst cards. The panel says so, because a beginner who learns the
-arithmetic and its limits learns more than one handed an answer.
+The coach measures equity against *random* hands, because that needs no assumptions about
+how anyone plays. But nobody shoves a random hand, so that number flatters you exactly
+when it matters most. Rather than fake a range model, the coach raises the **bar**: a bet
+you could call on a hair-thin edge against random hands needs a clear edge against someone
+who just bet the pot. The bar it shows is the bar its suggestion used, and the post-hand
+review judges by the same standard — a review that praised a call the coach warned about
+would teach nothing.
+
+Outs are counted the way a player would count them: a card that pairs the board is nobody's
+out, because every player at the table shares it.
 
 ## Playing as an agent
 
@@ -178,7 +186,7 @@ src/server/    the room (identity, clocks, bot turns) and the HTTP/WS server
 src/mcp/       the agent-facing tools, the text renderer, and both transports
 public/        the browser client — no framework, no build step
 tools/         mcp-cli.mjs, a one-shot MCP client for debugging
-test/          109 tests
+test/          125 tests
 ```
 
 Two properties are worth calling out because everything else leans on them:

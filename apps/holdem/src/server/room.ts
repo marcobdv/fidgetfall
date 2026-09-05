@@ -338,6 +338,7 @@ export class PokerRoom {
       toCall: legal?.toCall ?? 0,
       street: hand.street,
       legal,
+      stack: inHand.stack,
       playersLeftToAct: countLeftToAct(table, player.seat),
     });
   }

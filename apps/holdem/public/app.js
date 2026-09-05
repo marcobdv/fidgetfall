@@ -505,7 +505,12 @@ function renderCoach(advice) {
   }
 
   const equity = Math.round(advice.equity.equity * 100);
-  const breakEven = advice.potOdds ? Math.round(advice.potOdds.breakEven * 100) : null;
+  // The bar the suggestion actually used: the raw price plus whatever margin the
+  // size of the bet demands. Showing the raw price alone would not match the advice.
+  const breakEven = advice.potOdds
+    ? Math.round((advice.potOdds.breakEven + advice.pressure.margin) * 100)
+    : null;
+  const rawPrice = advice.potOdds ? Math.round(advice.potOdds.breakEven * 100) : null;
   const short = breakEven !== null && equity < breakEven;
 
   pane.innerHTML = `
@@ -518,8 +523,9 @@ function renderCoach(advice) {
         </div>
         ${
           breakEven !== null
-            ? `<div><span>Price to call</span><b>${breakEven}%</b>
+            ? `<div><span>${breakEven === rawPrice ? "Price to call" : "Bar to clear"}</span><b>${breakEven}%</b>
                  <div class="meter"><i class="${short ? "short" : ""}" style="width:${breakEven}%"></i></div>
+                 ${breakEven === rawPrice ? "" : `<span>pot odds ${rawPrice}%, raised for bet size</span>`}
                </div>`
             : `<div><span>Outs</span><b>${advice.outs.count || "—"}</b></div>`
         }

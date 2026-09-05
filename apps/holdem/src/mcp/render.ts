@@ -101,8 +101,13 @@ export function renderAdvice(advice: CoachAdvice): string {
     `Equity ${(advice.equity.equity * 100).toFixed(1)}%${advice.equity.exact ? " (exact)" : ""}`,
   ];
   if (advice.potOdds) {
+    const breakEven = advice.potOdds.breakEven * 100;
     lines.push(
-      `Break-even ${(advice.potOdds.breakEven * 100).toFixed(1)}% to call ${advice.potOdds.toCall}`,
+      `Break-even ${breakEven.toFixed(1)}% to call ${advice.potOdds.toCall}` +
+        (advice.pressure.margin > 0
+          ? ` — but treat the bar as ${(breakEven + advice.pressure.margin * 100).toFixed(1)}% ` +
+            `against a bet this size (${advice.pressure.level})`
+          : ""),
     );
   }
   lines.push(`Suggestion: ${advice.suggestion} (confidence: ${advice.confidence})`, "");

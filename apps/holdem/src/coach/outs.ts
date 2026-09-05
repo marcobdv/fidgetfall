@@ -10,7 +10,8 @@
  */
 
 import { cardToString, fullDeck, type Card } from "../engine/cards.js";
-import { CATEGORY_NAMES, evaluate } from "../engine/handRank.js";
+import { CATEGORY_NAMES, evaluate, HandCategory } from "../engine/handRank.js";
+import { rankOf, suitOf } from "../engine/cards.js";
 
 export interface OutGroup {
   /** What these cards make, e.g. "Flush". */
@@ -42,10 +43,10 @@ export function countOuts(hole: readonly Card[], board: readonly Card[]): OutsRe
     const improved = evaluate([...hole, ...board, card]);
     if (improved.category <= current.category) continue;
 
-    // A card that improves the board equally for everyone is not an out for us:
-    // if it plays without either hole card, everyone gets the same hand.
-    const boardOnly = board.length + 1 >= 5 ? evaluate([...board, card]) : null;
-    if (boardOnly && boardOnly.score >= improved.score) continue;
+    // A card that improves the board equally for everyone is not an out for us.
+    // Pairing the board on the flop is the common case: an eight landing on
+    // A-8-4 gives every player a pair of eights, so it is nobody's out.
+    if (improved.category <= boardCategory([...board, card])) continue;
 
     count++;
     const label = CATEGORY_NAMES[improved.category];
@@ -68,6 +69,32 @@ export function countOuts(hole: readonly Card[], board: readonly Card[]): OutsRe
 }
 
 const RANK_ORDER = "23456789TJQKA";
+
+/**
+ * The best category the board alone offers, for any number of cards.
+ *
+ * `evaluate` needs five, and a flop plus one card is only four — so this counts
+ * ranks and suits directly. Straights and flushes are impossible below five
+ * cards, which is why only the counting categories appear here.
+ */
+function boardCategory(cards: readonly Card[]): HandCategory {
+  if (cards.length >= 5) return evaluate(cards).category;
+
+  const rankCounts = new Map<number, number>();
+  const suitCounts = new Map<number, number>();
+  for (const card of cards) {
+    rankCounts.set(rankOf(card), (rankCounts.get(rankOf(card)) ?? 0) + 1);
+    suitCounts.set(suitOf(card), (suitCounts.get(suitOf(card)) ?? 0) + 1);
+  }
+
+  const counts = [...rankCounts.values()].sort((a, b) => b - a);
+  if (counts[0] === 4) return HandCategory.FourOfAKind;
+  if (counts[0] === 3 && (counts[1] ?? 0) >= 2) return HandCategory.FullHouse;
+  if (counts[0] === 3) return HandCategory.ThreeOfAKind;
+  if (counts[0] === 2 && (counts[1] ?? 0) === 2) return HandCategory.TwoPair;
+  if (counts[0] === 2) return HandCategory.Pair;
+  return HandCategory.HighCard;
+}
 
 function byRankDescending(a: string, b: string): number {
   const rank = (text: string) => RANK_ORDER.indexOf(text[0]!.toUpperCase());
