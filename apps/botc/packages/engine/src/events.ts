@@ -44,6 +44,12 @@ export interface EventPayloads {
   };
   /** Public: the Storyteller has ruled on it. */
   'player.ability.resolved': { abilityId: string; seatId: string; name: string; text?: string };
+  /**
+   * Something the Storyteller wrote down for the record and did not say out loud.
+   * Storyteller-only while the game runs; folded into everyone's chronicle at the
+   * reveal, which is where the dramatic irony belongs and where it costs nothing.
+   */
+  'st.record': { text: string };
   /** The roll call at the end: every seat, named out loud, once the game is over. */
   'game.rollcall': {
     seats: {

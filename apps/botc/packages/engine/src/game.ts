@@ -669,6 +669,24 @@ export class Game {
     return ok(use);
   }
 
+  /**
+   * Write something into the record without saying it. The town never hears it and
+   * never sees that it happened; it appears in every chronicle once the game is over.
+   *
+   * This exists because the temptation to narrate what only you know is real and the
+   * reason for it is usually that the moment is too good to lose. It is not lost —
+   * put it here. "Delia named three people tonight and none of it did anything" is a
+   * wonderful line in a recap and a catastrophe said out loud on the day.
+   */
+  stRecord(actorSeatId: string, text: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    this.emit('st.record', { text: clean.value }, ST_ONLY, actorSeatId);
+    return ok(undefined);
+  }
+
   /** Everything declared out loud that the Storyteller has not yet dealt with. */
   pendingAbilities(): AbilityUse[] {
     return this.state.abilityUses.filter((use) => !use.resolvedAt);

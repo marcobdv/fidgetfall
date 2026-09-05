@@ -49,6 +49,7 @@ const ST_ACTIONS = [
   'start',
   'advance_phase',
   'set_phase',
+  'record',
   'resolve_ability',
   'assign',
   'set_alignment',
@@ -117,6 +118,9 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
       break;
     case 'set_phase':
       raw = { type: 'st_set_phase', phase: need(args.phase, 'phase') };
+      break;
+    case 'record':
+      raw = { type: 'st_record', text: need(args.text, 'text') as string };
       break;
     case 'resolve_ability':
       raw = {
@@ -757,6 +761,12 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '    until you clear them. Any text is announced to the whole town; anything private',
           '    goes to the player with `info` as usual.',
           '  message (player, text) — a private word; announce (text) — tell the whole town',
+          '  record (text) — write a line into the CHRONICLE without saying it. Nobody hears it',
+          '    and nobody sees that it happened; it appears in every player\'s recap once the',
+          '    game is over. This is where the thing you are itching to announce goes. "Delia',
+          '    named three people tonight and none of it did anything" is a wonderful line in a',
+          '    recap and a catastrophe said out loud on the day. The record is written after; the',
+          '    game is played now.',
           '  kill (player, text? as the cause) / revive (player)',
           '  add_reminder (player, label) / remove_reminder (player, reminder_id)',
           '  set_alignment (player, alignment) / set_traveller (player, allowed) / set_ghost_vote (player, allowed)',

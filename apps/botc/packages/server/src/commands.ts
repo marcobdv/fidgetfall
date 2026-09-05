@@ -45,6 +45,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_start') }),
   z.object({ type: z.literal('st_advance_phase') }),
   z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']) }),
+  z.object({ type: z.literal('st_record'), text: z.string() }),
   z.object({ type: z.literal('st_resolve_ability'), abilityId: z.string().optional(), text: z.string().optional() }),
   z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional(), believes: z.string().optional() }),
   z.object({ type: z.literal('st_set_alignment'), target: z.string(), alignment: z.enum(['good', 'evil']) }),
@@ -188,6 +189,8 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
           )
         : to;
     }
+    case 'st_record':
+      return game.stRecord(seatId, command.text);
     case 'st_resolve_ability':
       return game.stResolveAbility(seatId, command.abilityId, command.text);
     case 'st_set_alignment': {

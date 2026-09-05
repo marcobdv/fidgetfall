@@ -94,3 +94,32 @@ test('the chronicle records it as an act of the day, not as chatter', () => {
   assert.match(story, /\*\*Ana\*\* used their ability on Ben — "I shoot Ben\."/);
   assert.match(story, /Nothing happens\. Ben is unharmed\./);
 });
+
+/**
+ * The Storyteller's private record. Everything they are itching to announce and
+ * must not, kept until the reveal, when it costs nobody anything.
+ */
+test('a record is invisible during the game and in every chronicle after it', () => {
+  // Written at NIGHT, which is when a Storyteller most wants to say something and
+  // must not — and which is the act the first version of this failed to render.
+  const t = table(['Ana', 'Ben', 'Cal'], { Ana: 'oaf', Ben: 'wraith' });
+  expectOk(t.game.stRecord(t.st.id, 'Ana named three people tonight and killed nobody.'));
+
+  // Mid-game: the Storyteller has it, the players have nothing — not even a hint
+  // that something was written.
+  const during = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id }, { reveal: false });
+  assert.ok(!during.includes('killed nobody'), 'a live recap must not carry it');
+  assert.ok(!during.includes('>'), 'nor show that anything was withheld');
+  const mine = writeChronicle(t.game, { kind: 'storyteller' }, { reveal: false });
+  assert.match(mine, /> Ana named three people tonight and killed nobody\./);
+
+  // At the reveal it joins everybody's copy.
+  expectOk(t.game.stEndGame(t.st.id, 'good', 'done'));
+  const after = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id }, { reveal: true });
+  assert.match(after, /> Ana named three people tonight and killed nobody\./);
+});
+
+test('only the Storyteller may write the record', () => {
+  const t = day(['Ana', 'Ben', 'Cal']);
+  assert.match(expectErr(t.game.stRecord(t.byName('Ana').id, 'let me in')), /[Ss]toryteller/);
+});

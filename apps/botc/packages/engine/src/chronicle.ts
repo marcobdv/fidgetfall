@@ -32,6 +32,7 @@ interface Act {
   whispers: Map<string, number>;
   overheard: { from: string; to: string[]; text: string }[];
   abilities: string[];
+  records: string[];
   /** Who was woken in the night, and what each of them was shown. */
   woken: { seatId: string; name: string; wakes: number; told: string[] }[];
   notices: string[];
@@ -49,6 +50,7 @@ const emptyAct = (kind: Act['kind'], day: number): Act => ({
   whispers: new Map(),
   overheard: [],
   abilities: [],
+  records: [],
   woken: [],
   notices: [],
 });
@@ -181,6 +183,9 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
       case 'st.wake':
         wokenEntry(current, game, String(d['seatId'])).wakes += 1;
         break;
+      case 'st.record':
+        current.records.push(String(d['text']));
+        break;
       case 'system.notice':
         current.notices.push(String(d['text']));
         break;
@@ -230,6 +235,7 @@ function narrateNight(
   }
 
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
+  for (const record of act.records) lines.push(`> ${record}`);
 
   if (act.deaths.length === 0) {
     if (act.day > 1) {
@@ -281,6 +287,7 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
 
   // What the Storyteller said out loud is part of the record, not scaffolding.
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
+  for (const record of act.records) lines.push(`> ${record}`);
 
   // Abilities used in the open are acts of the day, not chatter, and read as such.
   if (act.abilities.length) {
@@ -361,7 +368,16 @@ const trim = (text: string): string => (text.length > 240 ? `${text.slice(0, 237
 export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOptions = {}): string {
   const state = game.state;
   const reveal = options.reveal ?? state.phase === 'over';
-  const events = game.eventsSince(0, viewer);
+  let events = game.eventsSince(0, viewer);
+  // The Storyteller's private notes are exactly the things they were right not to say
+  // out loud. At the reveal they belong in everybody's copy — that is the whole point
+  // of writing them down instead of announcing them.
+  if (reveal && viewer.kind !== 'storyteller') {
+    const records = game
+      .eventsSince(0, { kind: 'storyteller' })
+      .filter((event) => event.type === 'st.record');
+    events = [...events, ...records].sort((a, b) => a.seq - b.seq);
+  }
   const acts = collect(game, events);
   const pick = picker(state.id);
 
