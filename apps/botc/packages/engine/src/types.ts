@@ -64,6 +64,11 @@ export interface Seat {
   /** A dead player keeps one vote token until they spend it. */
   ghostVote: boolean;
   connected: boolean;
+  /**
+   * What this player has told the town they are. Public, unverified, and quite
+   * possibly a lie — that is the point.
+   */
+  claimedCharacterId?: string;
   /** Grimoire data: only the Storyteller and the seat's owner ever see these. */
   characterId?: string;
   alignment?: Alignment;

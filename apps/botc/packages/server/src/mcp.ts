@@ -450,6 +450,27 @@ export function buildMcpServer(deps: McpDeps): McpServer {
   );
 
   server.registerTool(
+    'claim',
+    {
+      title: 'Claim a character',
+      description:
+        'Tell the whole town which character you are. It goes on the board next to your name for everyone to see, and it is not checked by anything — claim what you like, including something you are not. Everyone can see when two living players claim the same character. Pass no character to take a claim back.',
+      inputSchema: {
+        seat_token: SEAT_TOKEN,
+        character: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('A character id from read_script. Omit or null to retract your claim.'),
+      },
+    },
+    async ({ seat_token, character }) =>
+      run(seat_token, { type: 'claim', character: character ?? null }, (room, seatId) =>
+        renderView(room.view(seatId)),
+      ),
+  );
+
+  server.registerTool(
     'nominate',
     {
       title: 'Nominate a player',

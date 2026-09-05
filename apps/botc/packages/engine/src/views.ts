@@ -24,6 +24,10 @@ export interface SeatView {
   hasNominatedToday: boolean;
   hasBeenNominatedToday: boolean;
   onBlock: boolean;
+  /** What they have told the town they are. Public, and possibly a lie. */
+  claim?: Character;
+  /** True when another living player is claiming the same character. */
+  claimContested?: boolean;
   /** Present only for your own seat, or every seat when you are the Storyteller. */
   character?: Character;
   alignment?: Alignment;
@@ -111,6 +115,7 @@ export function buildView(game: Game, viewer: Viewer): GameView {
   const nomination = game.activeNomination();
   const alive = game.alivePlayers().length;
   const notepad = notepadOwner(game, viewer);
+  const contested = new Set(game.contestedClaims().map((c) => c.characterId));
 
   const seats: SeatView[] = game
     .players()
@@ -130,6 +135,11 @@ export function buildView(game: Game, viewer: Viewer): GameView {
         hasBeenNominatedToday: seat.hasBeenNominatedToday,
         onBlock: state.onBlockSeatId === seat.id,
       };
+      const claimed = game.character(seat.claimedCharacterId);
+      if (claimed) {
+        view.claim = claimed;
+        if (contested.has(claimed.id)) view.claimContested = true;
+      }
       if (isST(viewer) || mine) {
         const character = game.character(seat.characterId);
         if (character) view.character = character;
@@ -271,6 +281,13 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return `${d['name']} is alive again.`;
     case 'player.character':
       return `You are the ${d['characterName']} (${d['team']}).`;
+    case 'player.claim': {
+      if (d['characterId'] === null) return `${d['name']} takes back their claim.`;
+      const contested = d['contestedBy'] as string[];
+      return contested.length
+        ? `${d['name']} claims the ${d['characterName']} — so does ${contested.join(', ')}. One of them is lying.`
+        : `${d['name']} claims the ${d['characterName']}.`;
+    }
     case 'nomination.made':
       return `${d['nominatorName']} nominates ${d['nomineeName']}${d['kind'] === 'exile' ? ' for exile' : ''}.`;
     case 'vote.cast':

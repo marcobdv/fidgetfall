@@ -297,6 +297,46 @@ describe('a game with humans and agents', () => {
     st.close();
   });
 
+  it('puts claims on the board where everyone can weigh them', async () => {
+    const created = await postJson(port, '/api/games', {
+      scriptId: 'whispers-in-the-orchard',
+      storytellerName: 'ST',
+    });
+    const st = await HumanClient.connect(port, created.token);
+    const agents = [];
+    for (const name of ['Ana', 'Ben', 'Cal']) {
+      agents.push(await AgentClient.join(port, created.joinCode, name));
+    }
+    const [ana, ben, cal] = agents as [AgentClient, AgentClient, AgentClient];
+    await st.waitFor((m) =>
+      m.some((x) => x.type === 'state' && (x['view'] as { seats: unknown[] }).seats.length === 3),
+    );
+    // Ana is the demon and is about to claim she is not.
+    await st.send({ type: 'st_assign', target: 'Ana', character: 'blight' });
+    await st.send({ type: 'st_start' });
+    await st.send({ type: 'st_set_phase', phase: 'day' });
+
+    assert.equal((await ana.call('claim', { character: 'beekeeper' })).isError, false);
+    const seen = await cal.call('look');
+    assert.match(seen.text, /Ana says they are the Beekeeper/);
+    assert.doesNotMatch(seen.text, /Blight/, 'the claim is not the character');
+
+    // Ben claims the same thing, and the table is told plainly.
+    const clash = await ben.call('claim', { character: 'beekeeper' });
+    assert.equal(clash.isError, false);
+    assert.match(clash.text, /CONTESTED/);
+    const heard = await cal.call('await_event', { since: 0, timeout_seconds: 5 });
+    assert.match(heard.text, /One of them is lying/);
+
+    // And the briefing teaches what to do about it.
+    const briefing = await cal.call('briefing');
+    assert.match(briefing.text, /Claims, and how to take one apart/);
+    assert.match(briefing.text, /Can it ever be checked\?/);
+
+    for (const agent of agents) await agent.close();
+    st.close();
+  });
+
   it('refuses storyteller powers to a player', async () => {
     const created = await postJson(port, '/api/games', {
       scriptId: 'whispers-in-the-orchard',

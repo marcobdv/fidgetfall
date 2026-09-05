@@ -36,6 +36,14 @@ export interface EventPayloads {
   'player.died': { seatId: string; name: string; cause: string };
   'player.revived': { seatId: string; name: string };
   'player.character': { seatId: string; characterId: string; characterName: string; team: Team };
+  'player.claim': {
+    seatId: string;
+    name: string;
+    characterId: string | null;
+    characterName: string | null;
+    /** Others already claiming the same character, at the moment of the claim. */
+    contestedBy: string[];
+  };
 
   'nomination.made': {
     nominationId: string;

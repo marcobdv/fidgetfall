@@ -128,6 +128,39 @@ if a person steps out of the game to ask a real question — whether you are an 
 they should keep playing, anything about the world outside this town — answer plainly and
 honestly. Never use information you did not get through the game's own channels.`;
 
+const CLAIMS = `## Claims, and how to take one apart
+
+Anyone may tell the town which character they are, and it goes on the board next to their
+name. Nothing checks it. That board is the shape of the game: use \`claim\` to put yourself
+on it, and read it constantly.
+
+**Before you believe a claim, ask:**
+
+- **Is it even on the script?** A character nobody could be is a lie you catch for free.
+- **Can it ever be checked?** Some characters speak once, on the first night — a Washerwoman,
+  an Investigator, a Chef. Nothing that happens later can ever contradict them, which makes
+  those the safest lies at the table. Others produce something new every night — an Empath, a
+  Fortune Teller, an Undertaker — and every night gives you another chance to catch them.
+  When someone claims the unfalsifiable kind at the exact moment they are under pressure,
+  say so out loud.
+- **Does it fit the corpses?** A claim has to survive who died, who didn't, and who was
+  protected. Most lies are built to survive the argument in front of them and not the week.
+- **Who does it save?** A claim that arrives the instant its owner is nominated is a shield,
+  not information.
+- **What is nobody claiming?** Run down the script and find the good characters no one has
+  claimed. Evil is usually sitting on one of them, quietly.
+
+**Two players claiming one character** does not always mean one is evil. One of them may be
+being lied to — a good player can be handed false information and never know. The town
+forgets this constantly and executes the wrong half of the pair.
+
+**Making a claim that survives:** claim early or not at all, because a claim under duress
+reads as a defence. Give the information, not your conclusion, and let the town do the
+arithmetic — they trust what they worked out themselves. Keep it small; every extra detail
+is another thing that can be shown to be false.
+
+`;
+
 const RULES = `## What the server holds you to
 
 | Phase | What you can do |
@@ -270,7 +303,7 @@ export function writeBriefing(room: Room, seatId: string, audience?: 'agent' | '
   const play = you?.isTraveller ? GROUP_PLAY['traveller'] : GROUP_PLAY[group];
   if (play) out.push('', play);
 
-  out.push('', DECEPTION, '', RULES);
+  out.push('', DECEPTION, '', CLAIMS, '', RULES);
   if (view.secondsLeft !== undefined || Object.keys(view.timers).length) out.push('', CLOCK);
   if (kind === 'agent') out.push('', LOOP, '', VOICE);
   else out.push('', HUMAN_NOTES);

@@ -19,6 +19,7 @@ const seatLine = (seat: SeatView, youSeatId: string | undefined): string => {
   if (seat.hasNominatedToday) bits.push('has nominated today');
   if (seat.hasBeenNominatedToday) bits.push('has been nominated today');
   if (!seat.connected) bits.push('disconnected');
+  if (seat.claim) bits.push(`claims ${seat.claim.name}${seat.claimContested ? ' (CONTESTED)' : ''}`);
   if (seat.character) bits.push(`${seat.character.name}${seat.alignment ? ` / ${seat.alignment}` : ''}`);
   if (seat.reminders?.length) bits.push(`reminders: ${seat.reminders.map((r) => r.label).join(', ')}`);
   const you = seat.id === youSeatId ? ' (you)' : '';
@@ -87,6 +88,16 @@ export function renderView(view: GameView): string {
     lines.push('', 'Not in play:');
     if (good.length) lines.push(`  good (safe Demon bluffs): ${good.map((c) => c.name).join(', ')}`);
     if (evil.length) lines.push(`  evil: ${evil.map((c) => c.name).join(', ')}`);
+  }
+
+  const claims = view.seats.filter((s) => s.claim && s.alive);
+  if (claims.length) {
+    lines.push('', 'Claims on the table:');
+    for (const seat of claims) {
+      lines.push(
+        `  ${seat.name} says they are the ${seat.claim?.name}${seat.claimContested ? ' — CONTESTED, someone here is lying' : ''}`,
+      );
+    }
   }
 
   lines.push('', `Votes needed to execute: ${view.votesToExecute}.`);

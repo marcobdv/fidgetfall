@@ -36,6 +36,21 @@ export function openSeatMenu(menu, { seat, view, send, close, openChannel }) {
     await send(command);
   };
 
+  // Your own seat: say what you are, or take it back.
+  if (!isStoryteller && me && seat.id === me.seatId && (view.phase === 'day' || view.phase === 'nominations')) {
+    const claim = document.createElement('select');
+    claim.appendChild(new Option('claim a character…', ''));
+    for (const character of view.script.characters) {
+      claim.appendChild(new Option(`${character.name} (${character.team})`, character.id));
+    }
+    claim.value = seat.claim?.id ?? '';
+    claim.addEventListener('change', () => act({ type: 'claim', character: claim.value || null }));
+    menu.appendChild(claim);
+    if (seat.claim) {
+      menu.appendChild(button('Take back my claim', () => act({ type: 'claim', character: null })));
+    }
+  }
+
   if (!isStoryteller && me && seat.id !== me.seatId) {
     if (view.phase === 'day' || view.phase === 'nominations') {
       menu.appendChild(button('Whisper', () => {

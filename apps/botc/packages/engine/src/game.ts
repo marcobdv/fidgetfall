@@ -482,6 +482,73 @@ export class Game {
     return ok(undefined);
   }
 
+  // ------------------------------------------------------------ claims
+
+  /**
+   * Tell the town what you are. Public and unverified: the engine records the
+   * claim and notes who else is claiming the same character, and rules on
+   * nothing. A claim is a speech act, so it happens in daylight.
+   */
+  claim(actorSeatId: string, characterId: string | null): Result<void> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
+      return err('you can only claim a character during the day');
+    }
+    if (!from.value.alive) return err('the dead do not claim');
+
+    if (characterId === null) {
+      if (!from.value.claimedCharacterId) return err('you have not claimed anything');
+      delete from.value.claimedCharacterId;
+      this.emit(
+        'player.claim',
+        { seatId: from.value.id, name: from.value.name, characterId: null, characterName: null, contestedBy: [] },
+        PUBLIC,
+        from.value.id,
+      );
+      return ok(undefined);
+    }
+
+    const character = this.character(characterId);
+    if (!character) return err(`"${characterId}" is not on this script`);
+    from.value.claimedCharacterId = character.id;
+    const contestedBy = this.players()
+      .filter((s) => s.id !== from.value.id && s.alive && s.claimedCharacterId === character.id)
+      .map((s) => s.name);
+
+    this.emit(
+      'player.claim',
+      {
+        seatId: from.value.id,
+        name: from.value.name,
+        characterId: character.id,
+        characterName: character.name,
+        contestedBy,
+      },
+      PUBLIC,
+      from.value.id,
+    );
+    return ok(undefined);
+  }
+
+  /** Characters more than one living player is claiming. */
+  contestedClaims(): { characterId: string; characterName: string; seatIds: string[] }[] {
+    const byCharacter = new Map<string, string[]>();
+    for (const seat of this.players()) {
+      if (!seat.alive || !seat.claimedCharacterId) continue;
+      const list = byCharacter.get(seat.claimedCharacterId) ?? [];
+      list.push(seat.id);
+      byCharacter.set(seat.claimedCharacterId, list);
+    }
+    return [...byCharacter.entries()]
+      .filter(([, seatIds]) => seatIds.length > 1)
+      .map(([characterId, seatIds]) => ({
+        characterId,
+        characterName: this.character(characterId)?.name ?? characterId,
+        seatIds,
+      }));
+  }
+
   // ------------------------------------------------------------ night
 
   stWake(actorSeatId: string, targetSeatId: string, prompt?: string): Result<void> {

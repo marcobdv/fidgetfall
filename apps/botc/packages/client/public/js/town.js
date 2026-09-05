@@ -90,7 +90,7 @@ export function renderTown(svg, view, options) {
       }
     }
     if (seat.isTraveller) {
-      group.appendChild(textNode('text', { class: 'seat-sub', x: 0, y: -TOKEN - 16 }, '✦'));
+      group.appendChild(textNode('text', { class: 'seat-sub', x: -TOKEN - 14, y: -TOKEN + 2 }, '✦'));
     }
 
     // Vote marker on the open nomination.
@@ -110,6 +110,15 @@ export function renderTown(svg, view, options) {
     if (showGrimoire && seat.character) sub.push(seat.character.name);
     else if (seat.id === view.you?.seatId && view.you?.character) sub.push(view.you.character.name);
     if (!seat.connected) sub.push('away');
+    if (seat.claim) {
+      group.appendChild(
+        textNode(
+          'text',
+          { class: `claim${seat.claimContested ? ' contested' : ''}`, x: 0, y: -TOKEN - 14 },
+          `"${seat.claim.name}"${seat.claimContested ? ' ⚠' : ''}`,
+        ),
+      );
+    }
     if (sub.length) group.appendChild(textNode('text', { class: 'seat-sub', x: 0, y: TOKEN + 56 }, sub.join(' · ')));
 
     // Your own read, written under their name — only you ever see this.
