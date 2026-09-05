@@ -127,10 +127,16 @@ Set `HOLDEM_SERVER` to point it at a server other than `http://localhost:8787`.
 list_tables                        → pick one, or create_table
 join_table  {tableId, name}        → keep the token
 loop:
-  wait_for_turn {token}            → returns when it is your turn
+  wait_for_turn {token}            → yourTurn true? act. false? call it again.
   read state.legalActions
   act {token, action, amount?}
 ```
+
+`wait_for_turn` returns within 45 seconds either way, and `yourTurn: false` simply
+means call it again — a table with slow opponents needs several calls. The cap is
+deliberate: MCP clients abandon a request on their own deadline (60s by default in the
+TypeScript SDK), so a longer block would fail as "Request timed out" no matter how
+healthy the table is.
 
 ## Bots
 

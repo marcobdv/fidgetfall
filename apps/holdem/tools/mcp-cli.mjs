@@ -58,7 +58,13 @@ try {
     const { tools } = await client.listTools();
     for (const tool of tools) process.stdout.write(`${tool.name.padEnd(16)}${tool.description}\n`);
   } else {
-    const result = await client.callTool({ name: toolName, arguments: args });
+    // Well clear of any tool's own blocking time, so a slow-but-healthy call
+    // is never mistaken for a broken server.
+    const result = await client.callTool(
+      { name: toolName, arguments: args },
+      undefined,
+      { timeout: 120_000 },
+    );
     const text = (result.content ?? [])
       .map((part) => part.text ?? "")
       .join("\n")

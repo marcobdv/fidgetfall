@@ -17,6 +17,18 @@ import { BOT_IDS, BOT_POLICIES } from "../bots/policies.js";
 import type { RoomClient } from "../shared/client.js";
 import { renderAdvice, renderReview, renderState, renderTables } from "./render.js";
 
+/**
+ * The longest `wait_for_turn` may block.
+ *
+ * This must stay comfortably under the MCP SDK's default *client* request
+ * timeout of 60s: the client gives up on its own deadline, so a wait at or past
+ * that mark fails with "Request timed out" no matter how healthy the server is.
+ * The agent's loop is what covers a long wait — one call returning `yourTurn:
+ * false` costs nothing, whereas a timed-out request looks like a broken table.
+ */
+export const MAX_WAIT_MS = 45_000;
+export const DEFAULT_WAIT_MS = 20_000;
+
 const TOKEN = z
   .string()
   .describe("The seat token returned by join_table. It identifies your seat and only your seat.");
@@ -164,21 +176,26 @@ export function buildMcpServer(client: RoomClient): McpServer {
     {
       title: "Wait until it is your turn",
       description:
-        "Blocks until it is your turn to act, then returns the table state. Use this instead of polling get_state in a loop. Returns with yourTurn=false if the wait runs out — just call it again.",
+        `Blocks until it is your turn to act, then returns the table state. Use this instead of polling get_state in a loop. It always returns within ${MAX_WAIT_MS / 1000} seconds: if your turn has not come round it returns yourTurn=false, and you simply call it again. That is normal and costs nothing — a table with slow opponents may need several calls.`,
       inputSchema: {
         token: TOKEN,
         timeoutMs: z
           .number()
           .int()
           .min(100)
-          .max(120_000)
+          .max(MAX_WAIT_MS)
           .optional()
-          .describe("How long to wait. Defaults to 30 seconds."),
+          .describe(
+            `How long to block, in ms, up to ${MAX_WAIT_MS}. Defaults to ${DEFAULT_WAIT_MS}. Longer is not better — the cap keeps the call inside your MCP client's own request deadline.`,
+          ),
       },
     },
     async ({ token, timeoutMs }) => {
       try {
-        const wait = await client.waitForTurn(token, timeoutMs ?? 30_000);
+        const wait = await client.waitForTurn(
+          token,
+          Math.min(timeoutMs ?? DEFAULT_WAIT_MS, MAX_WAIT_MS),
+        );
         const header = wait.yourTurn
           ? "It is your turn."
           : "Still not your turn — call wait_for_turn again.";

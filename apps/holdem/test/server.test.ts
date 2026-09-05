@@ -4,7 +4,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { startServer, type RunningServer } from "../src/server/http.js";
 import { PokerRoom } from "../src/server/room.js";
 import { HttpRoomClient } from "../src/mcp/httpClient.js";
-import { buildMcpServer } from "../src/mcp/tools.js";
+import { buildMcpServer, MAX_WAIT_MS } from "../src/mcp/tools.js";
+import { DEFAULT_REQUEST_TIMEOUT_MSEC } from "@modelcontextprotocol/sdk/shared/protocol.js";
 
 let running: RunningServer;
 let base: string;
@@ -317,6 +318,45 @@ describe("MCP endpoint", () => {
       else expect(seat.holeCards).toBeNull();
     }
     await client.close();
+  });
+});
+
+describe("wait_for_turn stays inside the client's own deadline", () => {
+  // An MCP client abandons a request on its own timer. A wait at or past that
+  // mark therefore fails with "Request timed out" however healthy the server
+  // is — which reads to an agent as a broken table. This margin is the fix, so
+  // it is worth a test that fails loudly if anyone widens the cap again.
+  it("caps the wait well under the SDK's default request timeout", () => {
+    expect(MAX_WAIT_MS).toBeLessThan(DEFAULT_REQUEST_TIMEOUT_MSEC);
+    expect(DEFAULT_REQUEST_TIMEOUT_MSEC - MAX_WAIT_MS).toBeGreaterThanOrEqual(10_000);
+  });
+
+  it("refuses a timeout longer than the cap rather than accepting one that cannot work", async () => {
+    const client = new Client({ name: "test-agent", version: "0.0.1" });
+    await client.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
+
+    const table = await new HttpRoomClient(base).createTable({ bigBlind: 20 });
+    const seating = await new HttpRoomClient(base).join(table.id, { name: "Waiter", kind: "agent" });
+
+    const tooLong = await client.callTool({
+      name: "wait_for_turn",
+      arguments: { token: seating.token, timeoutMs: DEFAULT_REQUEST_TIMEOUT_MSEC * 2 },
+    });
+    expect(tooLong.isError).toBe(true);
+
+    await client.close();
+  });
+
+  it("returns promptly with yourTurn=false when the turn does not come", async () => {
+    const client = new HttpRoomClient(base);
+    const table = await client.createTable({ bigBlind: 20 });
+    const seating = await client.join(table.id, { name: "Lonely", kind: "agent" });
+
+    const started = Date.now();
+    const wait = await client.waitForTurn(seating.token, 300);
+    expect(wait.yourTurn).toBe(false);
+    expect(wait.timedOut).toBe(true);
+    expect(Date.now() - started).toBeLessThan(5000);
   });
 });
 
