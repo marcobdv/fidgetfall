@@ -93,6 +93,40 @@ describe('the defence', () => {
     assert.match(describeEvent(t.game, floor), /3 players have not nominated today/);
   });
 
+  it('holds the day open while a nomination is still live', () => {
+    // The phase clock expiring mid-defence used to close the vote at 0, so a
+    // correct nomination died without anyone being able to vote on it.
+    const t = clocked(['Ana', 'Ben', 'Cal', 'Dee']);
+    expectOk(t.game.stSetTimer(t.st, 'nominations', 120));
+    expectOk(t.game.stSetTimer(t.st, 'defence', 60));
+    expectOk(t.game.stSetTimer(t.st, 'vote', 90));
+    expectOk(t.game.stSetPhase(t.st, 'day'));
+    expectOk(t.game.stSetPhase(t.st, 'nominations'));
+
+    t.advance(100);
+    expectOk(t.game.nominate(t.seat('Ana'), t.seat('Ben')));
+
+    // The nominations clock runs out while Ben is still answering.
+    t.advance(30);
+    t.game.tick(t.now());
+    assert.equal(t.game.state.phase, 'nominations', 'the day waits');
+    assert.equal(t.game.activeNomination()?.state, 'defence');
+
+    // The defence ends, the vote is taken, and only then may the day close.
+    t.advance(35);
+    t.game.tick(t.now());
+    assert.equal(t.game.activeNomination()?.state, 'voting');
+    expectOk(t.game.castVote(t.seat('Cal'), true));
+    expectOk(t.game.castVote(t.seat('Dee'), true));
+    // The vote clock runs out: the nomination resolves and only then does the
+    // overdue day close, in the same tick.
+    t.advance(95);
+    t.game.tick(t.now());
+    assert.equal(t.game.activeNomination(), undefined, 'the vote resolved');
+    assert.equal(t.game.state.phase, 'dusk', 'and only then did the day end');
+    assert.equal(t.game.seat(t.seat('Ben'))?.alive, false, 'the votes counted');
+  });
+
   it('says nothing about the floor once the day is over', () => {
     const t = clocked(['Ana', 'Ben', 'Cal', 'Dee']);
     expectOk(t.game.stSetPhase(t.st, 'day'));

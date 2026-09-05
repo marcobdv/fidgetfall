@@ -938,6 +938,11 @@ export class Game {
       changed = true;
     }
 
+    // A nomination in progress holds the day open. Otherwise the phase clock can
+    // expire during a defence and close the vote before a single hand goes up,
+    // which loses the town a nomination it had every right to resolve.
+    if (this.activeNomination()?.open) return changed;
+
     if (this.state.phaseEndsAt !== undefined && now >= this.state.phaseEndsAt) {
       const from = this.state.phase;
       this.emit(
