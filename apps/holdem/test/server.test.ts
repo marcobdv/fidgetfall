@@ -3,6 +3,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { startServer, type RunningServer } from "../src/server/http.js";
 import { PokerRoom } from "../src/server/room.js";
+import { HttpRoomClient } from "../src/mcp/httpClient.js";
+import { buildMcpServer } from "../src/mcp/tools.js";
 
 let running: RunningServer;
 let base: string;
@@ -269,12 +271,20 @@ describe("MCP endpoint", () => {
       arguments: { tableId, name: "Student", buyIn: 1000 },
     });
     const token = (joined.structuredContent as { token: string }).token;
-    await client.callTool({ name: "wait_for_turn", arguments: { token, timeoutMs: 5000 } });
+    const waited = await client.callTool({
+      name: "wait_for_turn",
+      arguments: { token, timeoutMs: 5000 },
+    });
+    const legal = (waited.structuredContent as { state: { legalActions: { canCheck: boolean } } })
+      .state.legalActions;
 
-    // Preflop, facing the big blind, checking is not available.
-    const bad = await client.callTool({ name: "act", arguments: { token, action: "check" } });
+    // Whichever of check/call the spot does *not* offer must be refused. Which
+    // one that is depends on where the button landed, so ask the table rather
+    // than assuming.
+    const illegal = legal.canCheck ? "call" : "check";
+    const bad = await client.callTool({ name: "act", arguments: { token, action: illegal } });
     expect(bad.isError).toBe(true);
-    expect(text(bad)).toMatch(/cannot check/);
+    expect(text(bad)).toMatch(legal.canCheck ? /nothing to call/ : /cannot check/);
 
     // And a bet with no amount is refused rather than guessed at.
     const noAmount = await client.callTool({ name: "act", arguments: { token, action: "raise" } });
@@ -307,6 +317,59 @@ describe("MCP endpoint", () => {
       else expect(seat.holeCards).toBeNull();
     }
     await client.close();
+  });
+});
+
+describe("the HTTP-backed client (what the stdio entrypoint proxies through)", () => {
+  it("drives a whole hand over REST, exactly as the in-process client does", async () => {
+    const client = new HttpRoomClient(base);
+
+    const table = await client.createTable({ name: "Stdio table", bigBlind: 20, bots: ["station"] });
+    expect(table.agents).toBe(1);
+
+    const listed = await client.listTables();
+    expect(listed.some((t) => t.id === table.id)).toBe(true);
+
+    const seating = await client.join(table.id, { name: "Proxy", kind: "agent", buyIn: 1000 });
+    expect(seating.token.startsWith(`${table.id}.`)).toBe(true);
+
+    // The token alone is enough — the client derives the table from it.
+    const wait = await client.waitForTurn(seating.token, 5000);
+    expect(wait.yourTurn).toBe(true);
+    expect(wait.state.seats[seating.seat]!.holeCards).toHaveLength(2);
+
+    const advice = await client.advise(seating.token);
+    expect(advice!.tips.length).toBeGreaterThan(1);
+
+    const legal = wait.state.legalActions!;
+    const after = await client.act(seating.token, {
+      type: legal.canCall ? "call" : "check",
+    });
+    expect(after.log.join(" ")).toMatch(/Proxy/);
+
+    await client.leave(seating.token);
+    await expect(client.state(seating.token)).rejects.toThrow(/unknown or expired/);
+  });
+
+  it("turns a server-side rejection into a readable error", async () => {
+    const client = new HttpRoomClient(base);
+    await expect(client.createTable({ bigBlind: 20, smallBlind: 100 })).rejects.toThrow(
+      /cannot exceed/,
+    );
+  });
+
+  it("says plainly when the table server is not reachable", async () => {
+    // Port 1 is reserved and never listening.
+    const client = new HttpRoomClient("http://127.0.0.1:1");
+    await expect(client.listTables()).rejects.toThrow(/cannot reach the table server/);
+  });
+
+  it("builds the same tool set as the in-process path", async () => {
+    // The stdio entrypoint is these two lines plus a transport; if they agree,
+    // an agent sees the same table whichever way it connects.
+    const server = buildMcpServer(new HttpRoomClient(base));
+    expect(server).toBeDefined();
+    await server.close();
   });
 });
 

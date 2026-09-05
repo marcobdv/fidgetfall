@@ -126,7 +126,7 @@ $("table-list").addEventListener("click", async (event) => {
   const join = event.target.closest("[data-join]");
   const watch = event.target.closest("[data-watch]");
   if (join) await sitDown(join.dataset.join);
-  else if (watch) openTable(watch.dataset.watch, null);
+  else if (watch) await openTable(watch.dataset.watch, null);
 });
 
 $("create-btn").addEventListener("click", async () => {
@@ -151,8 +151,10 @@ $("create-btn").addEventListener("click", async () => {
 async function sitDown(tableId) {
   const existing = store.get(`seat:${tableId}`);
   if (existing) {
-    openTable(tableId, existing);
-    return;
+    await openTable(tableId, existing);
+    // openTable clears a token the server no longer honours; if it did, fall
+    // through and buy in again rather than leaving the player merely watching.
+    if (app.token) return;
   }
 
   const name = $("f-name").value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
@@ -164,7 +166,7 @@ async function sitDown(tableId) {
     });
     store.set(`seat:${tableId}`, seating.token);
     store.set("name", name);
-    openTable(tableId, seating.token);
+    await openTable(tableId, seating.token);
   } catch (error) {
     toast(error.message);
   }
@@ -172,7 +174,18 @@ async function sitDown(tableId) {
 
 // ------------------------------------------------------------------ table --
 
-function openTable(tableId, token) {
+async function openTable(tableId, token) {
+  // A stored token can outlive the table it belonged to — the server keeps
+  // tables in memory. Check it before claiming a seat we no longer have.
+  if (token) {
+    try {
+      await api(`/api/tables/${tableId}?token=${encodeURIComponent(token)}`);
+    } catch {
+      store.remove(`seat:${tableId}`);
+      token = null;
+    }
+  }
+
   app.tableId = tableId;
   app.token = token;
   app.coach = null;
@@ -637,7 +650,7 @@ function boot() {
   const match = /^#\/t\/([A-Za-z0-9_-]+)$/.exec(location.hash);
   if (match) {
     const tableId = match[1];
-    openTable(tableId, store.get(`seat:${tableId}`));
+    void openTable(tableId, store.get(`seat:${tableId}`));
   }
 
   // Redraw the action timer smoothly between state pushes.

@@ -205,6 +205,10 @@ async function handle(
   switch (`${method} ${action}`) {
     case "GET ": {
       const token = url.searchParams.get("token") ?? undefined;
+      // A caller that supplies a token expects a seat's view. If the token is
+      // dead, say so rather than quietly handing back a spectator's view — an
+      // agent would otherwise see an empty hand and think it had been dealt one.
+      if (token !== undefined) room.resolve(token);
       return sendJson(res, 200, { state: room.view(tableId, token) });
     }
 

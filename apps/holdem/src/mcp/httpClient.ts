@@ -104,9 +104,13 @@ export class HttpRoomClient implements RoomClient {
   }
 
   async act(token: string, action: Action): Promise<StateView> {
+    // The wire format names the verb `action`; the engine's type is `type`.
     const { state } = await this.request<{ state: StateView }>(
       `/api/tables/${this.tableOf(token)}/act`,
-      { method: "POST", body: JSON.stringify({ token, ...action }) },
+      {
+        method: "POST",
+        body: JSON.stringify({ token, action: action.type, amount: action.amount }),
+      },
     );
     return state;
   }
