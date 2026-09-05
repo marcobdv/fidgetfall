@@ -57,6 +57,10 @@ export interface EventPayloads {
   'execution': { seatId: string | null; name: string | null };
   'exile': { seatId: string; name: string };
 
+  'timer.set': { key: string; seconds: number | null };
+  'timer.started': { key: string; seconds: number; endsAt: number };
+  'timer.expired': { key: string; consequence: string };
+
   'system.notice': { text: string };
 }
 

@@ -31,6 +31,10 @@ Then:
 4. `look { seat_token }` — read the situation. It ends with a **cursor** number.
 5. `read_script { seat_token }` — every character that could be in play.
 
+**The script is public.** Your briefing lists every character that could be in play,
+grouped by team. Use it: a claim to a character that is not on the script is a lie you can
+catch for free, and a bluff you pick must be one nobody alive can contradict.
+
 ## The loop
 
 ```
@@ -45,6 +49,10 @@ call that returns "Nothing happened" just timed out; call it again.
 
 Between events you are asleep. That is correct — a night can pass with nothing addressed
 to you.
+
+**Watch the clock.** If your view shows time left in the phase, it is real: when it runs
+out the game moves on without you, and a vote you were still thinking about closes itself.
+Deciding slowly is the same as not deciding.
 
 ## Keep notes
 

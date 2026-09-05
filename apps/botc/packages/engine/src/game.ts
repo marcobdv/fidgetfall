@@ -27,6 +27,8 @@ import {
   type SeatKind,
   type SeatNote,
   type Team,
+  type TimerKey,
+  type Timers,
 } from './types.js';
 
 export interface GameOptions {
@@ -97,6 +99,7 @@ export class Game {
       storytellerSeatId: storyteller.id,
       nominations: [],
       highestTally: 0,
+      timers: {},
       notes: new Map(),
     };
 
@@ -295,6 +298,7 @@ export class Game {
     this.resetDay();
     this.emit('game.started', { day: 1, seats: players.length }, PUBLIC, actorSeatId);
     this.emit('phase.changed', { phase: 'night', day: 1, previous: 'lobby' }, PUBLIC, actorSeatId);
+    this.startPhaseClock('night');
     if (players.length < RECOMMENDED_MIN_PLAYERS) {
       this.emit(
         'system.notice',
@@ -337,6 +341,7 @@ export class Game {
     }
     this.state.phase = next;
     this.emit('phase.changed', { phase: next, day: this.state.day, previous }, PUBLIC, actorSeatId);
+    this.startPhaseClock(next);
     return ok(next);
   }
 
@@ -651,6 +656,114 @@ export class Game {
     return ok(undefined);
   }
 
+  // ------------------------------------------------------------ the clock
+
+  /**
+   * Set how long a phase runs before the clock moves the game on, or how long a
+   * vote stays open. `null` clears it and hands that phase back to the
+   * Storyteller. Timers are what stop a table of agents waiting on each other
+   * forever; a Storyteller who wants to drive by hand simply sets none.
+   */
+  stSetTimer(actorSeatId: string, key: TimerKey, seconds: number | null): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (seconds !== null && (!Number.isFinite(seconds) || seconds < 5 || seconds > 3600)) {
+      return err('a timer must be between 5 and 3600 seconds, or null to clear it');
+    }
+    if (seconds === null) delete this.state.timers[key];
+    else this.state.timers[key] = Math.trunc(seconds);
+
+    this.emit('timer.set', { key, seconds: seconds === null ? null : Math.trunc(seconds) }, PUBLIC, actorSeatId);
+    // Applying a timer to the phase already running starts it immediately.
+    if (key === this.state.phase) this.startPhaseClock(this.state.phase);
+    if (key === 'vote') {
+      const nomination = this.activeNomination();
+      if (nomination?.open) this.startVoteClock(nomination);
+    }
+    return ok(undefined);
+  }
+
+  stClearTimers(actorSeatId: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    this.state.timers = {};
+    this.state.phaseEndsAt = undefined;
+    const nomination = this.activeNomination();
+    if (nomination) delete nomination.endsAt;
+    this.emit('timer.set', { key: 'all', seconds: null }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  timers(): Timers {
+    return { ...this.state.timers };
+  }
+
+  /** Seconds left on the phase clock, or undefined when none is running. */
+  secondsLeft(now = this.now()): number | undefined {
+    if (this.state.phaseEndsAt === undefined) return undefined;
+    return Math.max(0, Math.ceil((this.state.phaseEndsAt - now) / 1000));
+  }
+
+  voteSecondsLeft(now = this.now()): number | undefined {
+    const endsAt = this.activeNomination()?.endsAt;
+    if (endsAt === undefined) return undefined;
+    return Math.max(0, Math.ceil((endsAt - now) / 1000));
+  }
+
+  private startPhaseClock(phase: Phase): void {
+    const seconds = phase === 'over' || phase === 'lobby' ? undefined : this.state.timers[phase as TimerKey];
+    if (!seconds) {
+      this.state.phaseEndsAt = undefined;
+      return;
+    }
+    this.state.phaseEndsAt = this.now() + seconds * 1000;
+    this.emit(
+      'timer.started',
+      { key: phase, seconds, endsAt: this.state.phaseEndsAt },
+      PUBLIC,
+    );
+  }
+
+  private startVoteClock(nomination: Nomination): void {
+    const seconds = this.state.timers.vote;
+    if (!seconds) {
+      delete nomination.endsAt;
+      return;
+    }
+    nomination.endsAt = this.now() + seconds * 1000;
+    this.emit('timer.started', { key: 'vote', seconds, endsAt: nomination.endsAt }, PUBLIC);
+  }
+
+  /**
+   * Advance any clock that has run out. The engine has no timer of its own — the
+   * server calls this, so the rules stay pure and the tests stay deterministic.
+   * Returns true when something changed.
+   */
+  tick(now = this.now()): boolean {
+    if (this.state.phase === 'lobby' || this.state.phase === 'over') return false;
+    let changed = false;
+
+    const nomination = this.activeNomination();
+    if (nomination?.open && nomination.endsAt !== undefined && now >= nomination.endsAt) {
+      this.emit('timer.expired', { key: 'vote', consequence: 'the vote is closed' }, PUBLIC);
+      this.closeNominationInternal(this.state.storytellerSeatId);
+      changed = true;
+    }
+
+    if (this.state.phaseEndsAt !== undefined && now >= this.state.phaseEndsAt) {
+      const from = this.state.phase;
+      this.emit(
+        'timer.expired',
+        { key: from, consequence: `${from} is over` },
+        PUBLIC,
+      );
+      this.state.phaseEndsAt = undefined;
+      this.stAdvancePhase(this.state.storytellerSeatId);
+      changed = true;
+    }
+    return changed;
+  }
+
   // ------------------------------------------------------------ private notes
 
   /**
@@ -812,6 +925,7 @@ export class Game {
     };
     this.state.nominations.push(nomination);
     this.state.activeNominationId = nomination.id;
+    this.startVoteClock(nomination);
     from.value.hasNominatedToday = true;
     to.value.hasBeenNominatedToday = true;
 

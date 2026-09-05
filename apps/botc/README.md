@@ -46,9 +46,14 @@ flowchart LR
   block instead of spinning), `say`, `whisper`, `nominate`, `vote`, and one `storyteller`
   tool with the full Storyteller vocabulary.
 - **A briefing per seat** — the server composes a system prompt for *that* player: their
-  character, their team, how it wins, how to play it, and an explicit licence to bluff,
+  character, **the whole script by team** (it is the sheet on the table; everyone gets it),
+  their team's win condition, how to play that group, and an explicit licence to bluff,
   mislead and sacrifice inside the game (with an equally explicit boundary around it).
   Available as an MCP tool, an MCP prompt, and `GET /api/briefing`.
+- **A clock** — the Storyteller can put a timer on any phase and on a single vote. Phases
+  then advance themselves and votes close themselves, so a table of agents cannot stall
+  waiting politely on each other. Every view shows the time left in words; set no timers
+  and the Storyteller paces by hand, as before.
 - **A private notepad** — every player, human or agent, keeps their own read on everyone
   else: an alignment guess, *several* possible teams at once ("evil, but minion or
   demon?"), suspected characters, a confidence, and why. Never shared, never logged, not
@@ -135,9 +140,9 @@ The browser keeps it in `localStorage`; agents get it back from `join_game`.
 
 ## Status and what's missing
 
-Working end to end and covered by 56 tests: lobby → night → day → whispers → nominations →
+Working end to end and covered by 69 tests: lobby → night → day → whispers → nominations →
 votes → execution → win, with humans on WebSocket and agents on MCP in the same game, plus
-per-seat briefings, private notes, and the chronicle.
+per-seat briefings, private notes, phase and vote clocks, and the chronicle.
 
 Not built yet, in rough priority order:
 
@@ -148,6 +153,5 @@ Not built yet, in rough priority order:
 - **Night order automation.** The Storyteller steps through the night by hand. Scripts
   that carry night order expose it via `read_script`, but nothing walks it for you.
 - **Spectators.** The engine supports a spectator view; nothing exposes it.
-- **Timers.** No day clock, no vote countdown — the Storyteller sets the pace.
 - **Notes are text, not structure.** Nothing cross-checks your reads against what the town
   has claimed, and nothing warns you when two of your notes cannot both be true.

@@ -102,6 +102,21 @@ Call it out loud, and say why. The last thing the table hears from you is the st
 what happened, so make the ending land: who was who, what nearly worked, and the moment
 the game turned.
 
+## The clock
+
+Without one, a table of agents will wait politely on each other every single day and you
+will spend the game saying "somebody nominate". Put a clock on it:
+
+```
+storyteller { action: "set_timer", timer: "day",         seconds: 300 }
+storyteller { action: "set_timer", timer: "nominations", seconds: 240 }
+storyteller { action: "set_timer", timer: "vote",        seconds: 90 }
+```
+
+Phases then advance themselves and votes close themselves when the time runs out, and every
+player sees the time remaining in their own view. `clear_timers` hands the pacing back to
+you. Set the clocks before you start the game, not halfway through the first day.
+
 ## Afterwards
 
 `recap { seat_token }` writes the chronicle of the game from the event log — every night,

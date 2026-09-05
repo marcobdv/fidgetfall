@@ -17,9 +17,32 @@ function joinCode(): string {
 export class Room {
   readonly game: Game;
   private readonly listeners = new Set<() => void>();
+  private clock: ReturnType<typeof setInterval> | undefined;
 
   constructor(game: Game) {
     this.game = game;
+  }
+
+  /**
+   * The engine has no timer of its own, so the room ticks it. Only runs while a
+   * clock is actually configured, and stops itself when the game ends.
+   */
+  startClock(intervalMs = 1000): void {
+    if (this.clock) return;
+    this.clock = setInterval(() => {
+      if (this.game.state.phase === 'over') {
+        this.stopClock();
+        return;
+      }
+      if (this.game.tick(Date.now())) this.notify();
+    }, intervalMs);
+    this.clock.unref?.();
+  }
+
+  stopClock(): void {
+    if (!this.clock) return;
+    clearInterval(this.clock);
+    this.clock = undefined;
   }
 
   get id(): string {
@@ -100,6 +123,7 @@ export class RoomManager {
       ...(input.storytellerKind ? { storytellerKind: input.storytellerKind } : {}),
     });
     const room = new Room(game);
+    room.startClock();
     this.rooms.set(id, room);
     const session = this.issue(room, game.state.storytellerSeatId);
     return { room, session };
@@ -153,6 +177,7 @@ export class RoomManager {
       for (const [token, session] of this.sessions) {
         if (session.gameId === room.id) this.sessions.delete(token);
       }
+      room.stopClock();
       this.rooms.delete(room.id);
       removed += 1;
     }

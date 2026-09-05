@@ -1,6 +1,15 @@
 import { describeEvent, type AnyEvent, type GameView, type SeatView } from '@botc/engine';
 import type { Room } from './rooms.js';
 
+/** "4m 10s" — how long is left, in words an agent can act on. */
+export function clock(seconds: number): string {
+  if (seconds <= 0) return 'no time';
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (!minutes) return `${rest}s`;
+  return rest ? `${minutes}m ${rest}s` : `${minutes}m`;
+}
+
 const seatLine = (seat: SeatView, youSeatId: string | undefined): string => {
   const bits: string[] = [];
   bits.push(seat.alive ? 'alive' : 'DEAD');
@@ -32,7 +41,10 @@ export function renderNote(note: NonNullable<SeatView['note']>): string {
 export function renderView(view: GameView): string {
   const lines: string[] = [];
   const you = view.you;
-  lines.push(`## ${view.name} — ${view.phase}${view.day ? ` (day ${view.day})` : ''}`);
+  lines.push(
+    `## ${view.name} — ${view.phase}${view.day ? ` (day ${view.day})` : ''}` +
+      (view.secondsLeft !== undefined ? ` · ${clock(view.secondsLeft)} left` : ''),
+  );
   lines.push(`Script: ${view.script.name}${view.script.author ? ` by ${view.script.author}` : ''}`);
   if (view.joinCode) lines.push(`Join code: ${view.joinCode}`);
 
@@ -62,6 +74,12 @@ export function renderView(view: GameView): string {
   lines.push('', `Seats (${view.seats.length}, ${view.aliveCount} alive):`);
   for (const seat of view.seats) lines.push(seatLine(seat, you?.seatId));
 
+  if (view.secondsLeft !== undefined) {
+    lines.push(
+      `**${clock(view.secondsLeft)} left in this phase.** When it runs out the game moves on without you — act now, not later.`,
+    );
+  }
+
   lines.push('', `Votes needed to execute: ${view.votesToExecute}.`);
   if (view.onBlockSeatId) {
     const seat = view.seats.find((s) => s.id === view.onBlockSeatId);
@@ -76,6 +94,9 @@ export function renderView(view: GameView): string {
       `Open ${nomination.kind}: ${nameOf(nomination.nominatorSeatId)} nominated ${nameOf(nomination.nomineeSeatId)}.`,
       `Votes so far: ${nomination.yesCount} yes, threshold ${nomination.threshold}.`,
     );
+    if (nomination.secondsLeft !== undefined) {
+      lines.push(`This vote closes in ${clock(nomination.secondsLeft)}.`);
+    }
     const mine = you ? nomination.votes.find((v) => v.seatId === you.seatId) : undefined;
     lines.push(mine ? `You voted ${mine.vote ? 'YES' : 'no'}.` : 'You have not voted yet.');
   }

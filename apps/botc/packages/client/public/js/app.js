@@ -23,6 +23,9 @@ const state = {
   unread: {},
   showGrimoire: true,
   socket: null,
+  // Server-sent seconds plus the moment we got them, so the clock ticks smoothly
+  // between state pushes instead of jumping once a second.
+  clock: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +50,7 @@ const dom = {
   sayInput: $('say-input'),
   stBar: $('st-bar'),
   grimoireToggle: $('grimoire-toggle'),
+  clock: $('clock'),
   seatMenu: $('seat-menu'),
   leave: $('leave'),
   briefing: $('briefing'),
@@ -205,6 +209,12 @@ function render() {
   dom.phaseBadge.textContent = view.phase === 'lobby' ? 'lobby' : `${view.phase} · day ${view.day}`;
   dom.phaseBadge.dataset.phase = view.phase;
 
+  const seconds = view.nomination?.open ? view.nomination.secondsLeft : view.secondsLeft;
+  state.clock = seconds === undefined || seconds === null
+    ? null
+    : { seconds, at: Date.now(), label: view.nomination?.open ? 'vote' : view.phase };
+  renderClock();
+
   const you = view.you;
   const parts = [`${view.aliveCount}/${view.seats.length} alive`];
   if (you && !you.isStoryteller) {
@@ -266,6 +276,20 @@ function closeMenu() {
   state.menuAt = null;
   render();
 }
+
+function renderClock() {
+  if (!state.clock) {
+    dom.clock.hidden = true;
+    return;
+  }
+  const left = Math.max(0, state.clock.seconds - Math.floor((Date.now() - state.clock.at) / 1000));
+  const minutes = Math.floor(left / 60);
+  dom.clock.hidden = false;
+  dom.clock.textContent = `${state.clock.label} ${minutes}:${String(left % 60).padStart(2, '0')}`;
+  dom.clock.classList.toggle('urgent', left <= 15);
+}
+
+setInterval(renderClock, 1000);
 
 function selectChannel(channel) {
   state.channel = channel;

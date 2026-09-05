@@ -172,6 +172,15 @@ export function renderStorytellerBar(container, { view, send }) {
   if (view.onBlockSeatId) {
     container.appendChild(button('Clear the block', () => send({ type: 'st_set_on_block', target: null })));
   }
+  const timer = (label, key, seconds) =>
+    button(label, () => send({ type: 'st_set_timer', key, seconds }));
+  container.appendChild(timer('Day 5m', 'day', 300));
+  container.appendChild(timer('Nominations 3m', 'nominations', 180));
+  container.appendChild(timer('Vote 90s', 'vote', 90));
+  if (Object.keys(view.timers ?? {}).length) {
+    container.appendChild(button('Clocks off', () => send({ type: 'st_clear_timers' })));
+  }
+
   container.appendChild(button('Announce…', () => {
     const text = prompt('Tell the whole town');
     if (text) send({ type: 'st_announce', text });

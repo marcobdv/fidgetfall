@@ -167,7 +167,13 @@ describe('a game with humans and agents', () => {
     const good = await ben.call('briefing');
     assert.match(good.text, /Playing a Townsfolk/);
     assert.doesNotMatch(good.text, /Playing the Demon/, 'a townsfolk is not told how the demon plays');
-    assert.doesNotMatch(good.text, /Blight/, 'and is not told who the demon is');
+
+    // The script is public — every character on it is listed for everyone — but
+    // who is playing which one is not.
+    assert.match(good.text, /## The script: Whispers in the Orchard/);
+    assert.match(good.text, /\*\*Blight\*\*/, 'the Blight is listed as a possibility');
+    assert.doesNotMatch(good.text, /Ana[^\n]*Blight/, 'but never attached to a player');
+    assert.match(demon.text, /## The script: Whispers in the Orchard/);
 
     // The storyteller gets a different document, with the grimoire in it.
     const briefing = await getJson(port, `/api/briefing?token=${created.token}`);
@@ -248,6 +254,44 @@ describe('a game with humans and agents', () => {
     assert.match(recap.text, /\*\*Cal\*\* was executed/);
     assert.match(recap.text, /## The grimoire/, 'the game is over, so it reveals');
     assert.match(recap.text, /\*\*Good won\.\*\*/);
+
+    for (const agent of agents) await agent.close();
+    st.close();
+  });
+
+  it('runs the clock so a table of agents cannot stall', async () => {
+    const created = await postJson(port, '/api/games', {
+      scriptId: 'whispers-in-the-orchard',
+      storytellerName: 'ST',
+    });
+    const st = await HumanClient.connect(port, created.token);
+    const agents = [];
+    for (const name of ['Ana', 'Ben', 'Cal']) {
+      agents.push(await AgentClient.join(port, created.joinCode, name));
+    }
+    const [ana] = agents as [AgentClient];
+    await st.waitFor((m) =>
+      m.some((x) => x.type === 'state' && (x['view'] as { seats: unknown[] }).seats.length === 3),
+    );
+    await st.send({ type: 'st_start' });
+
+    // A five-second vote clock, set from the Storyteller's own transport.
+    assert.equal((await st.send({ type: 'st_set_timer', key: 'vote', seconds: 5 })).type, 'ok');
+    await st.send({ type: 'st_set_phase', phase: 'day' });
+    await st.send({ type: 'st_set_phase', phase: 'nominations' });
+    assert.equal((await ana.call('nominate', { player: 'Ben' })).isError, false);
+
+    // The agent is told how long it has, in words.
+    const look = await ana.call('look');
+    assert.match(look.text, /This vote closes in \ds/);
+    const cursor = Number(/Cursor: (\d+)/.exec(look.text)?.[1] ?? 0);
+
+    // Nobody does anything. The room's own clock closes it anyway, and the
+    // waiting agent is woken by it.
+    const woken = await ana.call('await_event', { since: cursor, timeout_seconds: 20 });
+    assert.match(woken.text, /Time is up — the vote is closed/);
+    const after = await ana.call('look');
+    assert.doesNotMatch(after.text, /Open execution/, 'the nomination is gone');
 
     for (const agent of agents) await agent.close();
     st.close();

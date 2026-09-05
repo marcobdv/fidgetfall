@@ -93,6 +93,21 @@ export interface SeatNote {
   updatedAt: number;
 }
 
+/**
+ * How long each phase runs before the clock advances it, in seconds. Unset
+ * means the Storyteller drives that phase by hand, which is the default.
+ */
+export interface Timers {
+  night?: number;
+  day?: number;
+  nominations?: number;
+  dusk?: number;
+  /** How long a single nomination stays open for voting. */
+  vote?: number;
+}
+
+export type TimerKey = keyof Timers;
+
 export type NominationKind = 'execution' | 'exile';
 
 export type NominationResult =
@@ -117,6 +132,8 @@ export interface Nomination {
   nominatorSeatId: string;
   nomineeSeatId: string;
   open: boolean;
+  /** Wall-clock deadline for this vote, if a vote timer is running. */
+  endsAt?: number;
   votes: Vote[];
   tally?: number;
   threshold?: number;
@@ -141,6 +158,9 @@ export interface GameState {
   highestTally: number;
   winner?: Alignment;
   endedReason?: string;
+  timers: Timers;
+  /** Wall-clock deadline for the current phase, if one is running. */
+  phaseEndsAt?: number;
   /** viewer seat id -> target seat id -> that viewer's private note. */
   notes: Map<string, Map<string, SeatNote>>;
 }

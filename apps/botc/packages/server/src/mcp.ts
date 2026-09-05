@@ -65,6 +65,8 @@ const ST_ACTIONS = [
   'set_on_block',
   'move_seat',
   'end_game',
+  'set_timer',
+  'clear_timers',
 ] as const;
 
 type StAction = (typeof ST_ACTIONS)[number];
@@ -82,6 +84,8 @@ interface StArgs {
   allowed?: boolean | undefined;
   winner?: 'good' | 'evil' | undefined;
   to_index?: number | undefined;
+  timer?: 'night' | 'day' | 'nominations' | 'dusk' | 'vote' | undefined;
+  seconds?: number | null | undefined;
 }
 
 /** Flatten the Storyteller tool's arguments into an engine command. */
@@ -189,6 +193,16 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
         target: need(args.player, 'player'),
         toIndex: need(args.to_index, 'to_index') ?? 0,
       };
+      break;
+    case 'set_timer':
+      raw = {
+        type: 'st_set_timer',
+        key: need(args.timer, 'timer'),
+        seconds: args.seconds === undefined ? null : args.seconds,
+      };
+      break;
+    case 'clear_timers':
+      raw = { type: 'st_clear_timers' };
       break;
     case 'end_game':
       raw = {
@@ -560,6 +574,10 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '  set_restriction (player, restriction, allowed) — take away whisper/nominate/vote',
           '  close_nomination / cancel_nomination / set_on_block (player, omit to clear)',
           '  move_seat (player, to_index) — reorder the circle',
+          '  set_timer (timer, seconds) — put a clock on a phase (night/day/nominations/dusk) or on',
+          '    a single vote; omit seconds to switch that clock off. The phase then advances itself,',
+          '    and votes close themselves, so a table of agents cannot stall. Try day 300, vote 90.',
+          '  clear_timers — hand every phase back to your own pacing',
           '  end_game (winner, text? as the reason)',
         ].join('\n'),
       inputSchema: {
@@ -576,6 +594,8 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         allowed: z.boolean().optional(),
         winner: z.enum(['good', 'evil']).optional(),
         to_index: z.number().int().optional(),
+        timer: z.enum(['night', 'day', 'nominations', 'dusk', 'vote']).optional(),
+        seconds: z.number().int().nullable().optional().describe('5-3600. Omit to switch that clock off.'),
       },
     },
     async (args) => {

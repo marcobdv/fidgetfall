@@ -52,6 +52,12 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_set_on_block'), target: z.string().nullable() }),
   z.object({ type: z.literal('st_move_seat'), target: z.string(), toIndex: z.number().int() }),
   z.object({ type: z.literal('st_end_game'), winner: z.enum(['good', 'evil']), reason: z.string() }),
+  z.object({
+    type: z.literal('st_set_timer'),
+    key: z.enum(['night', 'day', 'nominations', 'dusk', 'vote']),
+    seconds: z.number().int().nullable(),
+  }),
+  z.object({ type: z.literal('st_clear_timers') }),
 ]);
 
 export type Command = z.infer<typeof CommandSchema>;
@@ -203,5 +209,9 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
     }
     case 'st_end_game':
       return game.stEndGame(seatId, command.winner, command.reason);
+    case 'st_set_timer':
+      return game.stSetTimer(seatId, command.key, command.seconds);
+    case 'st_clear_timers':
+      return game.stClearTimers(seatId);
   }
 }

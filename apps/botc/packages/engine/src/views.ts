@@ -8,6 +8,7 @@ import type {
   ReminderToken,
   Restrictions,
   SeatNote,
+  Timers,
 } from './types.js';
 
 export interface SeatView {
@@ -44,6 +45,8 @@ export interface NominationView {
   votes: { seatId: string; vote: boolean; ghost: boolean }[];
   yesCount: number;
   threshold: number;
+  /** Seconds until this vote closes itself, if a vote clock is running. */
+  secondsLeft?: number;
   tally?: number;
   result?: Nomination['result'];
 }
@@ -82,6 +85,10 @@ export interface GameView {
   onBlockSeatId?: string;
   winner?: Alignment;
   endedReason?: string;
+  /** Configured phase durations in seconds. */
+  timers: Timers;
+  /** Seconds until this phase ends itself, if a clock is running. */
+  secondsLeft?: number;
   /** Highest event seq included in this view; pass it back as the cursor. */
   cursor: number;
 }
@@ -198,10 +205,14 @@ export function buildView(game: Game, viewer: Viewer): GameView {
               : Math.ceil(alive / 2),
           ...(nomination.tally !== undefined ? { tally: nomination.tally } : {}),
           ...(nomination.result ? { result: nomination.result } : {}),
+          ...(game.voteSecondsLeft() !== undefined ? { secondsLeft: game.voteSecondsLeft() } : {}),
         }
       : null,
+    timers: game.timers(),
     cursor: game.log.length,
   };
+  const left = game.secondsLeft();
+  if (left !== undefined) view.secondsLeft = left;
   if (isST(viewer)) view.joinCode = state.joinCode;
   if (state.onBlockSeatId) view.onBlockSeatId = state.onBlockSeatId;
   if (state.winner) view.winner = state.winner;
@@ -277,6 +288,14 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return d['seatId'] ? `${d['name']} is executed.` : 'Nobody is executed today.';
     case 'exile':
       return `${d['name']} is exiled from the town.`;
+    case 'timer.set':
+      return d['seconds'] === null
+        ? `The ${d['key']} clock is off.`
+        : `The ${d['key']} clock is set to ${d['seconds']}s.`;
+    case 'timer.started':
+      return `${String(d['key']).charAt(0).toUpperCase()}${String(d['key']).slice(1)} runs for ${d['seconds']} seconds.`;
+    case 'timer.expired':
+      return `Time is up — ${d['consequence']}.`;
     case 'system.notice':
       return `${d['text']}`;
   }

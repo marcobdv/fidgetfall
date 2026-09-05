@@ -174,6 +174,45 @@ You are a player at a table, not a narrator and not an assistant.
 - Do not announce that you are an AI, and do not accuse anyone else of being one. It is
   off-game information and it ends the fiction for everybody.`;
 
+/**
+ * The whole script, by team. Every player is entitled to this — it is printed on
+ * the sheet on the table — and without it nobody can judge a claim or pick a
+ * safe bluff.
+ */
+function scriptSheet(view: GameView): string {
+  const byTeam = new Map<string, string[]>();
+  for (const character of view.script.characters) {
+    const list = byTeam.get(character.team) ?? [];
+    list.push(character.ability ? `**${character.name}** — ${character.ability}` : `**${character.name}**`);
+    byTeam.set(character.team, list);
+  }
+  const lines = [`## The script: ${view.script.name}`, ''];
+  lines.push(
+    'Every character below *could* be in play; not all of them are. This is the sheet on the',
+    'table — use it to judge whether a claim is even possible, and to pick a bluff that is not',
+    'contradicted by someone alive.',
+  );
+  for (const [team, names] of byTeam) {
+    lines.push('', `**${team.toUpperCase()}** (${names.length})`);
+    for (const name of names) lines.push(`- ${name}`);
+  }
+  if (!view.script.characters.some((c) => c.ability)) {
+    lines.push(
+      '',
+      'This server carries no ability text for this script. If you do not know what a character',
+      'does, ask the Storyteller privately — that is allowed, and it is faster than guessing.',
+    );
+  }
+  return lines.join('\n');
+}
+
+const CLOCK = `## The clock
+
+If your view shows time left in the phase, it is real: when it runs out the game moves on
+without you, votes close themselves, and a nomination you were still thinking about is gone.
+Act inside the window. If it shows no clock, the Storyteller is pacing by hand and you should
+still not keep nine other players waiting.`;
+
 function winCondition(view: GameView): string {
   const team = view.you?.character?.team;
   const alignment = view.you?.alignment;
@@ -225,11 +264,14 @@ export function writeBriefing(room: Room, seatId: string, audience?: 'agent' | '
   const win = winCondition(view);
   if (win) out.push('', win);
 
+  out.push('', scriptSheet(view));
+
   const group = character?.team ?? 'townsfolk';
   const play = you?.isTraveller ? GROUP_PLAY['traveller'] : GROUP_PLAY[group];
   if (play) out.push('', play);
 
   out.push('', DECEPTION, '', RULES);
+  if (view.secondsLeft !== undefined || Object.keys(view.timers).length) out.push('', CLOCK);
   if (kind === 'agent') out.push('', LOOP, '', VOICE);
   else out.push('', HUMAN_NOTES);
 
@@ -310,7 +352,9 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     '- Agents block on `await_event`. Long silence from you means they are waiting, not stuck.',
     '- Address them by name when you wake them — several may be listening at once, and your',
     '  wake prompt is the only signal that it is their turn.',
-    '- Give deadlines in words ("I need your choice before I move to day"). They have no clock.',
+    '- Put a clock on it. `set_timer` with `timer: "day", seconds: 300` and `timer: "vote", seconds: 90`',
+    '  makes phases advance and votes close by themselves — without one, a table of agents will',
+    '  wait politely on each other until you nudge them, every single day.',
     '- Narrate a little more than you would in person. Humans read the room; agents read text.',
     '',
     '## Your grimoire',

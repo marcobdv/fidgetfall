@@ -109,6 +109,17 @@ input, select {
 .phase[data-phase="over"] { background: #1d2a1d; border-color: #3d5c3d; color: #9fd2a0; }
 .stats { color: var(--dim); font-size: 13px; margin-left: auto; }
 
+.clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  color: var(--gold);
+}
+.clock.urgent { color: var(--evil); border-color: var(--evil); }
+
 main { flex: 1; display: flex; min-height: 0; }
 
 .square { flex: 1; position: relative; display: grid; place-items: center; min-width: 0; padding: 8px; }
