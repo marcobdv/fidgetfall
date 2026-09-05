@@ -32,8 +32,8 @@ interface Act {
   whispers: Map<string, number>;
   overheard: { from: string; to: string[]; text: string }[];
   abilities: string[];
-  toldYou: string[];
-  wokeYou: number;
+  /** Who was woken in the night, and what each of them was shown. */
+  woken: { seatId: string; name: string; wakes: number; told: string[] }[];
   notices: string[];
 }
 
@@ -49,10 +49,28 @@ const emptyAct = (kind: Act['kind'], day: number): Act => ({
   whispers: new Map(),
   overheard: [],
   abilities: [],
-  toldYou: [],
-  wokeYou: 0,
+  woken: [],
   notices: [],
 });
+
+/** " (Gambler)", but only for a reader entitled to know it. */
+function roleTag(ctx: { game: Game; namesRoles: boolean }, seatId: string): string {
+  if (!ctx.namesRoles) return '';
+  const seat = ctx.game.seat(seatId);
+  const character = ctx.game.character(seat?.characterId);
+  if (!character) return '';
+  const believed = ctx.game.character(seat?.believedCharacterId);
+  return believed ? ` (${character.name}, who thinks they are the ${believed.name})` : ` (${character.name})`;
+}
+
+/** One row per player woken that night, in the order they were first woken. */
+function wokenEntry(act: Act, game: Game, seatId: string): Act['woken'][number] {
+  const found = act.woken.find((entry) => entry.seatId === seatId);
+  if (found) return found;
+  const entry = { seatId, name: game.seat(seatId)?.name ?? '?', wakes: 0, told: [] as string[] };
+  act.woken.push(entry);
+  return entry;
+}
 
 /** Deterministic per-game variety: the same game always reads the same way. */
 function picker(seed: string): (index: number, options: string[]) => string {
@@ -158,10 +176,10 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
         break;
       }
       case 'st.info':
-        current.toldYou.push(String(d['text']));
+        wokenEntry(current, game, String(d['seatId'])).told.push(String(d['text']));
         break;
       case 'st.wake':
-        current.wokeYou += 1;
+        wokenEntry(current, game, String(d['seatId'])).wakes += 1;
         break;
       case 'system.notice':
         current.notices.push(String(d['text']));
@@ -174,7 +192,12 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
   return acts.filter((act) => act.day > 0);
 }
 
-function narrateNight(act: Act, pick: ReturnType<typeof picker>, index: number): string[] {
+function narrateNight(
+  act: Act,
+  pick: ReturnType<typeof picker>,
+  index: number,
+  ctx: { game: Game; viewerSeatId?: string; namesRoles: boolean },
+): string[] {
   const lines: string[] = [];
   if (act.day === 1) {
     lines.push(
@@ -185,17 +208,25 @@ function narrateNight(act: Act, pick: ReturnType<typeof picker>, index: number):
       ]),
     );
   }
-  // A bare count of wakings tells you nothing; what you were shown is the night.
-  if (act.toldYou.length) {
-    lines.push('', '**You were woken, and shown this:**');
-    for (const told of act.toldYou) lines.push(`- *${told}*`);
-    lines.push('');
-  } else if (act.wokeYou) {
-    lines.push(
-      act.wokeYou === 1
-        ? 'You were woken once in the night, and told nothing you could use.'
-        : `You were woken ${act.wokeYou} times in the night, and told nothing you could use.`,
-    );
+  // A bare count of wakings tells you nothing, and it is not all one person's night —
+  // the Storyteller sees every wake, so each one is named for whoever it happened to.
+  // Each entry is one paragraph: the caller separates them with a blank line, so a
+  // list must be a single joined string or every bullet grows a gap.
+  for (const entry of act.woken) {
+    const mine = entry.seatId === ctx.viewerSeatId;
+    const who = mine ? 'You' : `${entry.name}${roleTag(ctx, entry.seatId)}`;
+    const was = mine ? 'were' : 'was';
+    if (entry.told.length) {
+      lines.push(
+        [`**${who} ${was} woken, and shown this:**`, ...entry.told.map((told) => `- *${told}*`)].join(
+          '\n',
+        ),
+      );
+    } else {
+      lines.push(
+        `${who} ${was} woken${entry.wakes > 1 ? ` ${entry.wakes} times` : ''}, and shown nothing.`,
+      );
+    }
   }
 
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
@@ -214,9 +245,9 @@ function narrateNight(act: Act, pick: ReturnType<typeof picker>, index: number):
     for (const death of act.deaths) {
       lines.push(
         pick(index + death.name.length, [
-          `${death.name} did not wake. ${capitalise(death.cause)} had come in the night.`,
-          `${death.name} was found dead — ${death.cause}.`,
-          `${death.name}'s seat was empty at dawn. The cause, ${death.cause}.`,
+          `${death.name} did not wake — ${death.cause}.`,
+          `${death.name} was found dead at dawn — ${death.cause}.`,
+          `${death.name}'s seat was empty in the morning. The cause: ${death.cause}.`,
         ]),
       );
     }
@@ -253,22 +284,19 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
 
   // Abilities used in the open are acts of the day, not chatter, and read as such.
   if (act.abilities.length) {
-    lines.push('', '**In the open:**');
-    for (const line of act.abilities) lines.push(`- ${line}`);
-    lines.push('');
+    lines.push(['**In the open:**', ...act.abilities.map((line) => `- ${line}`)].join('\n'));
   }
 
   // The private layer. For a player this is only what they were standing in; for the
   // Storyteller it is all of it, which is where the Demon's bluffs live.
   if (act.overheard.length) {
-    lines.push('', '**Out of earshot:**');
-    for (const line of act.overheard.slice(0, MAX_QUOTED_PER_DAY)) {
-      lines.push(`- **${line.from}** to **${line.to.join(' and ')}:** "${line.text}"`);
-    }
+    const quoted = act.overheard
+      .slice(0, MAX_QUOTED_PER_DAY)
+      .map((line) => `- **${line.from}** to **${line.to.join(' and ')}:** "${line.text}"`);
     if (act.overheard.length > MAX_QUOTED_PER_DAY) {
-      lines.push(`- *…and ${act.overheard.length - MAX_QUOTED_PER_DAY} more.*`);
+      quoted.push(`- *…and ${act.overheard.length - MAX_QUOTED_PER_DAY} more.*`);
     }
-    lines.push('');
+    lines.push(['**Out of earshot:**', ...quoted].join('\n'));
   }
 
   const whispers = [...act.whispers.entries()].sort((a, b) => b[1] - a[1]);
@@ -371,7 +399,14 @@ export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOpt
 
   for (const [index, act] of acts.entries()) {
     const lines =
-      act.kind === 'night' ? narrateNight(act, pick, index) : narrateDay(act, pick, index);
+      act.kind === 'night'
+        ? narrateNight(act, pick, index, {
+            game,
+            ...(viewer.kind === 'seat' ? { viewerSeatId: viewer.seatId } : {}),
+            // Only somebody entitled to know a character may see it in the margin.
+            namesRoles: viewer.kind === 'storyteller' || reveal,
+          })
+        : narrateDay(act, pick, index);
     if (!lines.length) continue;
     out.push('', `## ${act.kind === 'night' ? 'Night' : 'Day'} ${act.day}`);
     out.push(lines.join('\n\n'));
