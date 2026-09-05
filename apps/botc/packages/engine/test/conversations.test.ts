@@ -149,3 +149,19 @@ test('a wake keeps its prompt in the chronicle, not just a tally', () => {
   assert.match(own, /Your demon is Ben\. Your fellow minion is Cal\./);
   assert.ok(!own.includes('shown nothing'), 'a wake with a prompt is not nothing');
 });
+
+test('the chronicle records what a player chose, not only what they were told', () => {
+  const t = table(['Ana', 'Ben', 'Cal']);
+  expectOk(t.game.stWake(t.st.id, t.byName('Ana').id, 'The Dreamer wakes. Choose a player.'));
+  expectOk(t.game.messageStoryteller(t.byName('Ana').id, 'I choose Ben.'));
+  expectOk(t.game.stInfo(t.st.id, t.byName('Ana').id, 'You dreamt of Ben: the Oracle, and the Witch.'));
+  expectOk(t.game.stEndGame(t.st.id, 'good', 'done'));
+
+  const own = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Ana').id }, { reveal: true });
+  assert.match(own, /You said: "I choose Ben\."/);
+  assert.match(own, /You dreamt of Ben/);
+
+  // Another player's night is not theirs to read.
+  const cal = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id }, { reveal: true });
+  assert.ok(!cal.includes('I choose Ben'), 'a night choice stays private');
+});

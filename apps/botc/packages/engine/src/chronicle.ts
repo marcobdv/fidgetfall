@@ -34,7 +34,7 @@ interface Act {
   abilities: string[];
   records: string[];
   /** Who was woken in the night, and what each of them was shown. */
-  woken: { seatId: string; name: string; wakes: number; told: string[] }[];
+  woken: { seatId: string; name: string; wakes: number; told: string[]; chose: string[] }[];
   notices: string[];
 }
 
@@ -69,7 +69,13 @@ function roleTag(ctx: { game: Game; namesRoles: boolean }, seatId: string): stri
 function wokenEntry(act: Act, game: Game, seatId: string): Act['woken'][number] {
   const found = act.woken.find((entry) => entry.seatId === seatId);
   if (found) return found;
-  const entry = { seatId, name: game.seat(seatId)?.name ?? '?', wakes: 0, told: [] as string[] };
+  const entry = {
+    seatId,
+    name: game.seat(seatId)?.name ?? '?',
+    wakes: 0,
+    told: [] as string[],
+    chose: [] as string[],
+  };
   act.woken.push(entry);
   return entry;
 }
@@ -180,6 +186,16 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
       case 'st.info':
         wokenEntry(current, game, String(d['seatId'])).told.push(String(d['text']));
         break;
+      case 'chat.storyteller': {
+        // What a player SAID to the Storyteller is their night action — the choice
+        // itself. The record held what they were told and never what they chose.
+        if (d['fromStoryteller']) {
+          wokenEntry(current, game, String(d['toSeatId'])).told.push(String(d['text']));
+        } else {
+          wokenEntry(current, game, String(d['fromSeatId'])).chose.push(String(d['text']));
+        }
+        break;
+      }
       case 'st.wake': {
         // A wake carries a prompt, and the prompt is usually the whole substance of
         // the waking — "your demon is X, your fellow minion is Y". Counting the wake
@@ -227,12 +243,12 @@ function narrateNight(
     const mine = entry.seatId === ctx.viewerSeatId;
     const who = mine ? 'You' : `${entry.name}${roleTag(ctx, entry.seatId)}`;
     const was = mine ? 'were' : 'was';
-    if (entry.told.length) {
-      lines.push(
-        [`**${who} ${was} woken, and shown this:**`, ...entry.told.map((told) => `- *${told}*`)].join(
-          '\n',
-        ),
-      );
+    if (entry.told.length || entry.chose.length) {
+      const rows = [
+        ...entry.chose.map((said) => `- ${mine ? 'You' : entry.name} said: "${said}"`),
+        ...entry.told.map((told) => `- *${told}*`),
+      ];
+      lines.push([`**${who} ${was} woken:**`, ...rows].join('\n'));
     } else {
       lines.push(
         `${who} ${was} woken${entry.wakes > 1 ? ` ${entry.wakes} times` : ''}, and shown nothing.`,
