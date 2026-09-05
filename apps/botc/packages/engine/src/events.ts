@@ -33,6 +33,17 @@ export interface EventPayloads {
     text: string;
   };
   /** Public: the square sees people step apart, and how many of them. */
+  /** Public: somebody stood up and used a character ability in front of everyone. */
+  'player.ability': {
+    abilityId: string;
+    seatId: string;
+    name: string;
+    targetSeatIds: string[];
+    targetNames: string[];
+    text?: string;
+  };
+  /** Public: the Storyteller has ruled on it. */
+  'player.ability.resolved': { abilityId: string; seatId: string; name: string; text?: string };
   /** The roll call at the end: every seat, named out loud, once the game is over. */
   'game.rollcall': {
     seats: {

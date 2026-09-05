@@ -210,6 +210,8 @@ export interface GameState {
   notes: Map<string, Map<string, SeatNote>>;
   /** Private conversations currently standing apart from the square. */
   conversations: Conversation[];
+  /** Abilities declared out loud, waiting on a Storyteller ruling. */
+  abilityUses: AbilityUse[];
   /** Who has stepped aside with whom today, and how often. Cleared each night. */
   metToday: { seatIds: string[]; count: number }[];
 }
@@ -219,6 +221,24 @@ export interface GameState {
  * game you have to physically walk over and stand there — which is what makes
  * "who has Ewan spent his day with" worth watching.
  */
+/**
+ * A character used out loud. Some abilities are not night actions and not chatter:
+ * the Gossip's statement, the Chandler's public choice, the Slayer's shot. They
+ * happen in the square, everybody sees them happen, and the Storyteller has to rule
+ * on them — so they need to be an event the engine can see rather than a sentence
+ * the Storyteller has to catch going past.
+ */
+export interface AbilityUse {
+  id: string;
+  seatId: string;
+  targetSeatIds: string[];
+  text?: string;
+  day: number;
+  at: number;
+  /** Set when the Storyteller has dealt with it. */
+  resolvedAt?: number;
+}
+
 export interface Conversation {
   id: string;
   seatIds: string[];

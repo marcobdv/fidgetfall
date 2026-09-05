@@ -133,6 +133,11 @@ export interface GameView {
    * forgets the Exorcist.
    */
   nightOrder?: { order: number; characterName: string; inPlay?: string }[];
+  /**
+   * Storyteller only: abilities used out loud that you have not ruled on yet. The
+   * whole point is that one cannot go past you in the noise of a day.
+   */
+  pendingAbilities?: { id: string; name: string; targetNames: string[]; text?: string; day: number }[];
 
 }
 
@@ -295,6 +300,17 @@ export function buildView(game: Game, viewer: Viewer): GameView {
     metToday: game.metToday(),
     ...(isST(viewer)
       ? {
+          pendingAbilities: game.pendingAbilities().map((use) => ({
+            id: use.id,
+            name: game.seat(use.seatId)?.name ?? '?',
+            targetNames: use.targetSeatIds.map((id) => game.seat(id)?.name ?? '?'),
+            ...(use.text ? { text: use.text } : {}),
+            day: use.day,
+          })),
+        }
+      : {}),
+    ...(isST(viewer)
+      ? {
           nightOrder: game.nightOrder().map((character) => {
             const holder = game
               .players()
@@ -386,6 +402,16 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       const to = (d['toNames'] as string[]) ?? [];
       return `[whisper ${d['fromName']} -> ${to.join(', ')}] ${d['text']}`;
     }
+    case 'player.ability': {
+      const targets = (d['targetNames'] as string[]) ?? [];
+      const at = targets.length ? ` on ${targets.join(' and ')}` : '';
+      const said = d['text'] ? ` — "${d['text']}"` : '';
+      return `${d['name']} USES THEIR ABILITY${at}, out loud, in front of the whole town.${said}`;
+    }
+    case 'player.ability.resolved':
+      return d['text']
+        ? `The Storyteller rules on ${d['name']}'s ability: ${d['text']}`
+        : `The Storyteller has dealt with ${d['name']}'s ability.`;
     case 'game.rollcall': {
       const seats = (d['seats'] as Record<string, unknown>[]) ?? [];
       const rows = seats.map((row) => {

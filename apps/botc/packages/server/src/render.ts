@@ -165,6 +165,15 @@ export function renderView(view: GameView): string {
     }
   }
 
+  if (view.pendingAbilities?.length) {
+    lines.push('', '*** WAITING ON YOUR RULING ***');
+    for (const use of view.pendingAbilities) {
+      const at = use.targetNames.length ? ` on ${use.targetNames.join(' and ')}` : '';
+      lines.push(`  [${use.id}] day ${use.day} — ${use.name} used an ability${at}${use.text ? `: "${use.text}"` : ''}`);
+    }
+    lines.push('  Rule on it with storyteller { action: "resolve_ability", ability_id, text? }.');
+  }
+
   if (view.nightOrder?.length) {
     lines.push('', `Night order — ${view.day <= 1 ? 'first night' : 'every other night'}:`);
     for (const step of view.nightOrder) {

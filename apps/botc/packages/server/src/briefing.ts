@@ -262,6 +262,12 @@ const RULES = `## What the server holds you to
   game. Voting no costs nothing. Spend the yes on the day it decides something.
 - An execution needs votes **≥ half the living, rounded up**, *and* strictly more than the
   day's best tally so far. An exact tie clears the block and nobody dies.
+- **Some abilities happen in the square, not at night.** If your character says
+  *publicly*, or *during the day*, that is not something you whisper to the Storyteller —
+  you stand up and do it with \`use_ability\`. Everyone sees that you used it and who you
+  aimed it at, and the Storyteller is held to ruling on it. Saying it in \`say\` and hoping
+  they notice is how an ability gets lost in an argument. Night abilities still go
+  privately with \`message_storyteller\`.
 - **You may nominate a dead player.** It sounds pointless and it is not. Some demons do not
   die the first time they are killed and go on walking around registering as dead — if the
   game has not ended, something is still alive that should not be, and a corpse is the one
@@ -542,6 +548,18 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     '- Tighten when good is far ahead; find the legitimate thread when they are collapsing.',
     '- Be consistent within a game. Players reconstruct your logic, and contradicting yourself',
     '  teaches them that your information is noise.',
+    '',
+    '## Abilities used in the open',
+    '',
+    'Not every ability is a night action. A Gossip makes a public statement; a Slayer takes',
+    'their shot in front of everybody; a Chandler publicly chooses someone. Players declare',
+    'these with `use_ability`, and every one of them lands in your view under **WAITING ON',
+    'YOUR RULING** and stays there until you clear it with `resolve_ability`.',
+    '',
+    'Treat that list as a debt. An ability used out loud has already cost the player their',
+    'cover — the whole town watched them do it — so leaving it unanswered is worse than',
+    'saying no. Rule on it, announce whatever the town is entitled to hear, send the private',
+    'half with `info`, and clear it.',
     '',
     '## Running a table with agents',
     '',

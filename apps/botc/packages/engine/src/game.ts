@@ -12,6 +12,7 @@ import {
 } from './events.js';
 import { nightOrder } from './scripts.js';
 import {
+  type AbilityUse,
   type Conversation,
   PHASE_CYCLE,
   err,
@@ -111,6 +112,7 @@ export class Game {
       timers: {},
       notes: new Map(),
       conversations: [],
+      abilityUses: [],
       metToday: [],
     };
 
@@ -599,6 +601,111 @@ export class Game {
     for (const conversation of [...this.state.conversations]) {
       this.closeConversation(conversation, reason);
     }
+  }
+
+  /**
+   * Use a character ability out loud, in front of everybody. This is for the
+   * abilities that are not night actions and are not just talking: the Gossip's
+   * statement, a Chandler publicly choosing someone, a Slayer taking their shot.
+   *
+   * The engine does not know what any of them do — the Storyteller rules on it, as
+   * ever. What the engine does is make sure it cannot be missed: the square sees it,
+   * it goes on the record as an action rather than a sentence, and it sits in the
+   * Storyteller's view until they have dealt with it.
+   */
+  useAbility(actorSeatId: string, targetSeatIds: string[], text?: string): Result<AbilityUse> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    if (this.state.phase === 'night') {
+      return err('night abilities go to the Storyteller privately — use message_storyteller');
+    }
+    if (this.state.phase === 'lobby' || this.state.phase === 'over') {
+      return err('there is no game to use an ability in');
+    }
+    // The dead use abilities too — a Moonchild acts *because* they died.
+    const unique = [...new Set(targetSeatIds)];
+    const targets: Seat[] = [];
+    for (const id of unique) {
+      const to = this.requirePlayer(id);
+      if (!to.ok) return to;
+      targets.push(to.value);
+    }
+    let clean: string | undefined;
+    if (text !== undefined && text !== '') {
+      const checked = this.cleanText(text);
+      if (!checked.ok) return checked;
+      clean = checked.value;
+    }
+
+    const use: AbilityUse = {
+      id: this.makeId('use'),
+      seatId: from.value.id,
+      targetSeatIds: targets.map((t) => t.id),
+      ...(clean ? { text: clean } : {}),
+      day: this.state.day,
+      at: this.now(),
+    };
+    this.state.abilityUses.push(use);
+    this.emit(
+      'player.ability',
+      {
+        abilityId: use.id,
+        seatId: from.value.id,
+        name: from.value.name,
+        targetSeatIds: use.targetSeatIds,
+        targetNames: targets.map((t) => t.name),
+        ...(clean ? { text: clean } : {}),
+      },
+      PUBLIC,
+      from.value.id,
+    );
+    this.emit(
+      'system.notice',
+      {
+        text: `${from.value.name} has used an ability in the square and is waiting on your ruling.`,
+      },
+      ST_ONLY,
+    );
+    return ok(use);
+  }
+
+  /** Everything declared out loud that the Storyteller has not yet dealt with. */
+  pendingAbilities(): AbilityUse[] {
+    return this.state.abilityUses.filter((use) => !use.resolvedAt);
+  }
+
+  /**
+   * Close one off. Any `text` is announced to the whole town — the private half of a
+   * ruling, if there is one, goes through `info` to the player as usual.
+   */
+  stResolveAbility(actorSeatId: string, abilityId?: string, text?: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    const pending = this.pendingAbilities();
+    const use = abilityId ? pending.find((u) => u.id === abilityId) : pending[0];
+    if (!use) {
+      return err(abilityId ? 'no ability is waiting under that id' : 'nothing is waiting on you');
+    }
+    let clean: string | undefined;
+    if (text !== undefined && text !== '') {
+      const checked = this.cleanText(text);
+      if (!checked.ok) return checked;
+      clean = checked.value;
+    }
+    use.resolvedAt = this.now();
+    const seat = this.seat(use.seatId);
+    this.emit(
+      'player.ability.resolved',
+      {
+        abilityId: use.id,
+        seatId: use.seatId,
+        name: seat?.name ?? '?',
+        ...(clean ? { text: clean } : {}),
+      },
+      PUBLIC,
+      actorSeatId,
+    );
+    return ok(undefined);
   }
 
   /** A player's private line to the Storyteller (and the Storyteller's reply). */

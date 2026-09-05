@@ -11,6 +11,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('say'), text: z.string() }),
   z.object({ type: z.literal('whisper'), targets: z.array(z.string()), text: z.string() }),
   z.object({ type: z.literal('leave_conversation') }),
+  z.object({ type: z.literal('use_ability'), targets: z.array(z.string()), text: z.string().optional() }),
   z.object({ type: z.literal('message_storyteller'), text: z.string() }),
   z.object({ type: z.literal('nominate'), target: z.string() }),
   z.object({ type: z.literal('vote'), vote: z.boolean() }),
@@ -44,6 +45,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_start') }),
   z.object({ type: z.literal('st_advance_phase') }),
   z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']) }),
+  z.object({ type: z.literal('st_resolve_ability'), abilityId: z.string().optional(), text: z.string().optional() }),
   z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional(), believes: z.string().optional() }),
   z.object({ type: z.literal('st_set_alignment'), target: z.string(), alignment: z.enum(['good', 'evil']) }),
   z.object({ type: z.literal('st_add_reminder'), target: z.string(), label: z.string(), source: z.string().optional() }),
@@ -125,6 +127,16 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
     }
     case 'leave_conversation':
       return game.leaveConversation(seatId);
+    case 'use_ability': {
+      const ids: string[] = [];
+      for (const name of command.targets) {
+        const to = target(room, name);
+        if (!to.ok) return to;
+        ids.push(to.value.id);
+      }
+      const used = game.useAbility(seatId, ids, command.text);
+      return used.ok ? ok(undefined) : used;
+    }
 
     case 'message_storyteller':
       return game.messageStoryteller(seatId, command.text);
@@ -176,6 +188,8 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
           )
         : to;
     }
+    case 'st_resolve_ability':
+      return game.stResolveAbility(seatId, command.abilityId, command.text);
     case 'st_set_alignment': {
       const to = target(room, command.target);
       return to.ok ? game.stSetAlignment(seatId, to.value.id, command.alignment) : to;

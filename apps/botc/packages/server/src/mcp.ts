@@ -46,6 +46,7 @@ const ST_ACTIONS = [
   'start',
   'advance_phase',
   'set_phase',
+  'resolve_ability',
   'assign',
   'set_alignment',
   'add_reminder',
@@ -83,6 +84,7 @@ interface StArgs {
   phase?: 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | undefined;
   label?: string | undefined;
   reminder_id?: string | undefined;
+  ability_id?: string | undefined;
   restriction?: 'whisper' | 'nominate' | 'vote' | undefined;
   allowed?: boolean | undefined;
   winner?: 'good' | 'evil' | undefined;
@@ -112,6 +114,13 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
       break;
     case 'set_phase':
       raw = { type: 'st_set_phase', phase: need(args.phase, 'phase') };
+      break;
+    case 'resolve_ability':
+      raw = {
+        type: 'st_resolve_ability',
+        ...(args.ability_id ? { abilityId: args.ability_id } : {}),
+        ...(args.text ? { text: args.text } : {}),
+      };
       break;
     case 'assign':
       raw = {
@@ -489,6 +498,51 @@ export function buildMcpServer(deps: McpDeps): McpServer {
   );
 
   server.registerTool(
+    'use_ability',
+    {
+      title: 'Use a character ability out loud',
+      description:
+        [
+          'For the abilities that happen in the SQUARE rather than at night: a Gossip making',
+          'their public statement, a Chandler publicly choosing someone, a Slayer taking their',
+          'shot, a Moonchild naming a player on learning they died. Anything whose text says',
+          '"publicly" or "during the day" belongs here.',
+          '',
+          'Everybody sees that you did it and who you aimed it at. The Storyteller is told',
+          'directly and it sits in front of them until they rule on it, so it cannot be lost in',
+          'the noise of a day — which is exactly what happens if you only say it out loud.',
+          '',
+          'This does not run the ability. The Storyteller decides what happens, and may answer',
+          'you privately, publicly, or not at all. Use `say` for talking; use this for acting.',
+          '',
+          'NIGHT abilities do not go here — those go to the Storyteller privately with',
+          '`message_storyteller`. The dead may still use an ability if their character says so.',
+        ].join('\n'),
+      inputSchema: {
+        seat_token: SEAT_TOKEN,
+        player: z.string().optional().describe('The player you are aiming it at, if it takes one.'),
+        players: z
+          .array(z.string())
+          .optional()
+          .describe('Several players, if the ability takes more than one. Takes precedence over `player`.'),
+        text: z
+          .string()
+          .optional()
+          .describe('What you are declaring — a Gossip\'s statement, or what you claim the ability is doing.'),
+      },
+    },
+    async ({ seat_token, player, players, text: body }) => {
+      const named = players?.length ? players : player ? [player] : [];
+      return run(
+        seat_token,
+        { type: 'use_ability', targets: named, ...(body ? { text: body } : {}) },
+        () =>
+          `The town saw you use your ability${named.length ? ` on ${named.join(' and ')}` : ''}. The Storyteller has it.`,
+      );
+    },
+  );
+
+  server.registerTool(
     'leave',
     {
       title: 'Step back into the square',
@@ -687,6 +741,10 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '    time has run its course.',
           '  wake (player, text? as the prompt) / sleep (player)',
           '  info (player, text) — give a player what their ability shows them',
+          '  resolve_ability (ability_id?, text?) — rule on an ability somebody used out loud in',
+          '    the square. Your look lists them under WAITING ON YOUR RULING and they stay there',
+          '    until you clear them. Any text is announced to the whole town; anything private',
+          '    goes to the player with `info` as usual.',
           '  message (player, text) — a private word; announce (text) — tell the whole town',
           '  kill (player, text? as the cause) / revive (player)',
           '  add_reminder (player, label) / remove_reminder (player, reminder_id)',
@@ -719,6 +777,7 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']).optional(),
         label: z.string().optional().describe('Reminder token text.'),
         reminder_id: z.string().optional(),
+        ability_id: z.string().optional().describe('Which declared ability to rule on; omit for the oldest one waiting.'),
         restriction: z.enum(['whisper', 'nominate', 'vote']).optional(),
         allowed: z.boolean().optional(),
         winner: z.enum(['good', 'evil']).optional(),

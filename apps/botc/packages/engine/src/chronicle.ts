@@ -31,6 +31,7 @@ interface Act {
   said: { name: string; text: string }[];
   whispers: Map<string, number>;
   overheard: { from: string; to: string[]; text: string }[];
+  abilities: string[];
   toldYou: string[];
   wokeYou: number;
   notices: string[];
@@ -47,6 +48,7 @@ const emptyAct = (kind: Act['kind'], day: number): Act => ({
   said: [],
   whispers: new Map(),
   overheard: [],
+  abilities: [],
   toldYou: [],
   wokeYou: 0,
   notices: [],
@@ -138,6 +140,16 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
           to: ((d['toNames'] as string[]) ?? []).map(String),
           text: String(d['text']),
         });
+        break;
+      case 'player.ability': {
+        const targets = ((d['targetNames'] as string[]) ?? []).map(String);
+        current.abilities.push(
+          `**${d['name']}** used their ability${targets.length ? ` on ${targets.join(' and ')}` : ''}${d['text'] ? ` — "${d['text']}"` : ''}`,
+        );
+        break;
+      }
+      case 'player.ability.resolved':
+        if (d['text']) current.abilities.push(`The Storyteller: *${d['text']}*`);
         break;
       case 'conversation.opened': {
         const names = ((d['names'] as string[]) ?? []).map(String);
@@ -238,6 +250,13 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
 
   // What the Storyteller said out loud is part of the record, not scaffolding.
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
+
+  // Abilities used in the open are acts of the day, not chatter, and read as such.
+  if (act.abilities.length) {
+    lines.push('', '**In the open:**');
+    for (const line of act.abilities) lines.push(`- ${line}`);
+    lines.push('');
+  }
 
   // The private layer. For a player this is only what they were standing in; for the
   // Storyteller it is all of it, which is where the Demon's bluffs live.
