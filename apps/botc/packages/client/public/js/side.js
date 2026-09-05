@@ -5,8 +5,12 @@ export function channelFor(event, view) {
   const iAmStoryteller = Boolean(view.you?.isStoryteller);
   const d = event.data ?? {};
   switch (event.type) {
-    case 'chat.whisper':
-      return `w:${d.fromSeatId === me ? d.toSeatId : d.fromSeatId}`;
+    case 'chat.whisper': {
+      // A conversation is keyed by everyone in it, so a huddle gets its own thread
+      // rather than being smeared across two separate whisper channels.
+      const seats = [d.fromSeatId, ...(d.toSeatIds ?? [])].filter((id) => id !== me).sort();
+      return `w:${seats.join(',')}`;
+    }
     case 'chat.storyteller':
       return iAmStoryteller ? `st:${d.fromStoryteller ? d.toSeatId : d.fromSeatId}` : 'st';
     case 'st.info':
@@ -37,10 +41,11 @@ export function channelLabel(channel, view) {
   if (channel === 'town') return 'Town square';
   if (channel === 'st') return 'Storyteller';
   if (channel === 'grimoire') return 'Grimoire';
-  const [kind, seatId] = channel.split(':');
-  const seat = view.seats.find((s) => s.id === seatId);
-  const name = seat?.name ?? 'someone';
-  return kind === 'w' ? `↔ ${name}` : `ST ↔ ${name}`;
+  const [kind, ids] = channel.split(':');
+  const names = (ids ?? '')
+    .split(',')
+    .map((id) => view.seats.find((s) => s.id === id)?.name ?? 'someone');
+  return kind === 'w' ? `↔ ${names.join(', ')}` : `ST ↔ ${names[0]}`;
 }
 
 /** Every channel worth showing: always-on ones plus a tab per player. */
@@ -99,7 +104,7 @@ export function commandForChannel(channel, text) {
   if (channel === 'town') return { type: 'say', text };
   if (channel === 'st') return { type: 'message_storyteller', text };
   const [kind, seatId] = channel.split(':');
-  if (kind === 'w') return { type: 'whisper', target: seatId, text };
+  if (kind === 'w') return { type: 'whisper', targets: seatId.split(','), text };
   if (kind === 'st') return { type: 'st_message', target: seatId, text };
   return null;
 }

@@ -250,7 +250,8 @@ const RULES = `## What the server holds you to
 |---|---|
 | \`lobby\` | Wait. The Storyteller starts the game. |
 | \`night\` | Nothing publicly. The Storyteller may wake you and show you something. Answer with \`message_storyteller\`. |
-| \`day\` | \`say\` in the town square; \`whisper\` privately to one player, or to a few at once. |
+| \`day\` | \`say\` in the town square; \`whisper\` to take one player — or a few — aside. |
+| \`gather\` | The Storyteller has called the town in. Every huddle breaks up. **Public speech only**: no whispering, and a claim now is made to everyone or not at all. |
 | \`nominations\` | Talk, whisper, \`nominate\` (once per day, and each player can only be nominated once per day), \`vote\`. |
 | \`dusk\` | Whoever is on the block dies. |
 
@@ -261,8 +262,17 @@ const RULES = `## What the server holds you to
   game. Voting no costs nothing. Spend the yes on the day it decides something.
 - An execution needs votes **≥ half the living, rounded up**, *and* strictly more than the
   day's best tally so far. An exact tie clears the block and nobody dies.
-- Whispers are private, but the town **sees that you stepped aside**, and how many of you
-  there were. Who you keep whispering with is itself public information.
+- Whispers are private, but the town **sees that you stepped aside**, how many of you there
+  were, and who is standing apart right now. Every \`look\` carries a running tally of who
+  has met whom today. Read it: a pair who have talked four times are doing something, and
+  if you are evil, so are you and everyone can count.
+- **You can only be in ONE conversation at a time.** Whispering someone takes them aside;
+  the two of you (or the four of you) are standing apart from the square until somebody
+  calls \`leave\`. While you are there you cannot talk to anyone else — and neither can
+  they. Whisper with no player named to keep talking to whoever you are already with.
+  Try to whisper someone who is busy and you are told exactly who they are with, which is
+  itself worth knowing. **Leave as soon as you are done.** A day is only so long, and every
+  minute you spend standing in a corner is a minute nobody else can reach you.
 - **You can pull up to four people aside at once.** \`whisper { players: ["Ben", "Cal"] }\`
   puts all of you in one private conversation. This is how an alliance actually forms:
   three good players who pool what they know are much harder to pick apart than three who

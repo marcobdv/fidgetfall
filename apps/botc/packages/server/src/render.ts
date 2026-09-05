@@ -144,6 +144,27 @@ export function renderView(view: GameView): string {
     }
   }
 
+  if (view.talkingWith?.length) {
+    lines.push(
+      '',
+      `YOU ARE STANDING APART with ${view.talkingWith.join(' and ')}. Until you \`leave\`, whispers`,
+      'go to them and nobody else, and you cannot start another conversation.',
+    );
+  }
+
+  const busy = view.openConversations.filter((c) => c.names.length > 0);
+  if (busy.length) {
+    lines.push('', 'Talking privately right now (everyone can see this):');
+    for (const c of busy) lines.push(`  ${c.names.join(', ')}`);
+  }
+
+  if (view.metToday.length) {
+    lines.push('', 'Who has stepped aside with whom today:');
+    for (const met of view.metToday.slice(0, 12)) {
+      lines.push(`  ${met.names.join(' & ')}${met.count > 1 ? ` — ${met.count} times` : ''}`);
+    }
+  }
+
   lines.push('', `Votes needed to execute: ${view.votesToExecute}.`);
   if (view.onBlockSeatId) {
     const seat = view.seats.find((s) => s.id === view.onBlockSeatId);

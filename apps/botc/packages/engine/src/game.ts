@@ -12,6 +12,7 @@ import {
 } from './events.js';
 import { nightOrder } from './scripts.js';
 import {
+  type Conversation,
   PHASE_CYCLE,
   err,
   ok,
@@ -51,6 +52,8 @@ const MAX_MESSAGE = 2000;
 const MAX_CLAIMED = 5;
 /** Whisper to one, or huddle with a few. Past four people it is not private. */
 const MAX_HUDDLE = 4;
+/** An abandoned conversation is swept up rather than trapping everyone in it. */
+const CONVERSATION_IDLE_MS = 120_000;
 
 const defaultRestrictions = (): Restrictions => ({ whisper: true, nominate: true, vote: true });
 
@@ -107,6 +110,8 @@ export class Game {
       highestTally: 0,
       timers: {},
       notes: new Map(),
+      conversations: [],
+      metToday: [],
     };
 
     this.emit(
@@ -357,6 +362,12 @@ export class Game {
       this.state.day += 1;
       this.resetDay();
     }
+    // Wherever the day goes next, everyone comes back into the square first.
+    if (previous === 'day' || previous === 'nominations') {
+      this.closeAllConversations(
+        next === 'gather' ? 'the Storyteller called the town together' : 'the day moved on',
+      );
+    }
     this.state.phase = next;
     this.emit('phase.changed', { phase: next, day: this.state.day, previous }, PUBLIC, actorSeatId);
     this.startPhaseClock(next);
@@ -381,6 +392,7 @@ export class Game {
     }
     this.state.onBlockSeatId = undefined;
     this.state.highestTally = 0;
+    this.state.metToday = [];
   }
 
   // ------------------------------------------------------------ chat
@@ -405,16 +417,70 @@ export class Game {
     return ok(undefined);
   }
 
+  /** The conversation this player is currently standing in, if any. */
+  conversationOf(seatId: string): Conversation | undefined {
+    return this.state.conversations.find((c) => c.seatIds.includes(seatId));
+  }
+
+  /** Every conversation standing apart right now, for the Storyteller and the view. */
+  openConversations(): Conversation[] {
+    return this.state.conversations;
+  }
+
+  /** Who has stepped aside with whom today, most-frequent first. */
+  metToday(): { names: string[]; count: number }[] {
+    return [...this.state.metToday]
+      .sort((a, b) => b.count - a.count)
+      .map((entry) => ({
+        names: entry.seatIds.map((id: string) => this.seat(id)?.name ?? '?'),
+        count: entry.count,
+      }));
+  }
+
+  private recordMeeting(seatIds: string[]): void {
+    const key = [...seatIds].sort().join('|');
+    const found = this.state.metToday.find((e) => [...e.seatIds].sort().join('|') === key);
+    if (found) found.count += 1;
+    else this.state.metToday.push({ seatIds: [...seatIds], count: 1 });
+  }
+
   /**
-   * A private word with one player, or with a few at once. Real tables do both:
-   * the canonical unit is two people stepping aside, but "put your faith in one or
-   * two players and talk in secret with them" is the standard opening for good, and
-   * an alliance of three that trusts each other is how a town actually gets built.
-   * The square sees who huddled and how many; it never hears a word of it.
+   * A private word with one player, or with a few at once. You can only be in ONE
+   * conversation at a time — in the real game you have to walk over and stand there,
+   * and that scarcity is the whole reason "who has Ewan spent his day with" is worth
+   * watching. The first whisper opens the conversation; after that you are speaking
+   * to whoever you are standing with until you `leave`.
+   *
+   * The square sees people step apart, and how many. It never hears a word.
    */
   whisper(actorSeatId: string, targetSeatIds: string[], text: string): Result<void> {
     const from = this.requirePlayer(actorSeatId);
     if (!from.ok) return from;
+    const clean = this.cleanText(text);
+    if (!clean.ok) return clean;
+    if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
+      return this.state.phase === 'gather'
+        ? err('the town is gathered — say it where everyone can hear it')
+        : err('private conversations only happen during the day');
+    }
+    if (!from.value.restrictions.whisper) return err('you cannot whisper');
+
+    const standing = this.conversationOf(from.value.id);
+    if (standing) {
+      // Already in one. You may name exactly the people you are with, or nobody.
+      const unique = [...new Set(targetSeatIds)].filter((id: string) => id !== from.value.id);
+      const others = standing.seatIds.filter((id: string) => id !== from.value.id);
+      const mismatch =
+        unique.length > 0 &&
+        (unique.length !== others.length || unique.some((id) => !others.includes(id)));
+      if (mismatch) {
+        const names = others.map((id: string) => this.seat(id)?.name ?? '?').join(' and ');
+        return err(
+          `you are already talking with ${names} — leave that conversation before starting another`,
+        );
+      }
+      return this.speakInto(standing, from.value, clean.value);
+    }
 
     const unique = [...new Set(targetSeatIds)];
     if (!unique.length) return err('name at least one player to talk to');
@@ -429,40 +495,88 @@ export class Game {
         return err('use the Storyteller channel to talk to the Storyteller');
       }
       if (to.value.id === from.value.id) return err('you cannot whisper to yourself');
+      const busy = this.conversationOf(to.value.id);
+      if (busy) {
+        const with_ = busy.seatIds
+          .filter((sid: string) => sid !== to.value.id)
+          .map((sid: string) => this.seat(sid)?.name ?? '?')
+          .join(' and ');
+        return err(`${to.value.name} is already talking with ${with_} — wait, or talk to someone else`);
+      }
       targets.push(to.value);
     }
 
-    const clean = this.cleanText(text);
-    if (!clean.ok) return clean;
-    if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
-      return err('private conversations only happen during the day');
-    }
-    if (!from.value.restrictions.whisper) return err('you cannot whisper');
-    // The dead keep their voice. They lose the nomination and all but one vote —
-    // nothing else. A dead player who knows something is still the best weapon
-    // the town has, and silencing them here silenced two of them for a whole game.
-
-    const ids = targets.map((t) => t.id);
+    const seatIds = [from.value.id, ...targets.map((t) => t.id)];
+    const conversation: Conversation = {
+      id: this.makeId('conv'),
+      seatIds,
+      openedBy: from.value.id,
+      openedAt: this.now(),
+      lastSpokeAt: this.now(),
+    };
+    this.state.conversations.push(conversation);
+    this.recordMeeting(seatIds);
     this.emit(
-      'chat.whisper',
+      'conversation.opened',
       {
-        fromSeatId: from.value.id,
-        fromName: from.value.name,
-        toSeatIds: ids,
-        toNames: targets.map((t) => t.name),
-        text: clean.value,
+        conversationId: conversation.id,
+        seatIds,
+        names: seatIds.map((id: string) => this.seat(id)?.name ?? '?'),
       },
-      toSeats(from.value.id, ...ids),
-      from.value.id,
-    );
-    // The town can see who stepped aside together, but not what was said.
-    this.emit(
-      'chat.whisper.observed',
-      { fromSeatId: from.value.id, toSeatIds: ids },
       PUBLIC,
       from.value.id,
     );
+    return this.speakInto(conversation, from.value, clean.value);
+  }
+
+  private speakInto(conversation: Conversation, from: Seat, text: string): Result<void> {
+    conversation.lastSpokeAt = this.now();
+    const others = conversation.seatIds.filter((id: string) => id !== from.id);
+    this.emit(
+      'chat.whisper',
+      {
+        fromSeatId: from.id,
+        fromName: from.name,
+        toSeatIds: others,
+        toNames: others.map((id: string) => this.seat(id)?.name ?? '?'),
+        text,
+      },
+      toSeats(...conversation.seatIds),
+      from.id,
+    );
     return ok(undefined);
+  }
+
+  /** Step back into the square. Anyone may end a conversation they are standing in. */
+  leaveConversation(actorSeatId: string): Result<void> {
+    const from = this.requirePlayer(actorSeatId);
+    if (!from.ok) return from;
+    const standing = this.conversationOf(from.value.id);
+    if (!standing) return err('you are not in a private conversation');
+    this.closeConversation(standing, `${from.value.name} stepped back into the square`);
+    return ok(undefined);
+  }
+
+  private closeConversation(conversation: Conversation, reason: string): void {
+    this.state.conversations = this.state.conversations.filter((c) => c.id !== conversation.id);
+    this.emit(
+      'conversation.closed',
+      {
+        conversationId: conversation.id,
+        seatIds: conversation.seatIds,
+        names: conversation.seatIds.map((id: string) => this.seat(id)?.name ?? '?'),
+        reason,
+      },
+      PUBLIC,
+      conversation.openedBy,
+    );
+  }
+
+  /** Break up every huddle — at a phase change, or when one is simply abandoned. */
+  private closeAllConversations(reason: string): void {
+    for (const conversation of [...this.state.conversations]) {
+      this.closeConversation(conversation, reason);
+    }
   }
 
   /** A player's private line to the Storyteller (and the Storyteller's reply). */
@@ -526,8 +640,14 @@ export class Game {
   ): Result<void> {
     const from = this.requirePlayer(actorSeatId);
     if (!from.ok) return from;
-    if (this.state.phase !== 'day' && this.state.phase !== 'nominations') {
+    // When the town is gathered you may still stand up and claim to everyone —
+    // that is what a gathering is for. You just cannot take anyone aside.
+    const gathered = this.state.phase === 'gather';
+    if (this.state.phase !== 'day' && this.state.phase !== 'nominations' && !gathered) {
       return err('you can only claim a character during the day');
+    }
+    if (gathered && toSeatId !== null) {
+      return err('the town is gathered — a claim now is made to everyone or not at all');
     }
     if (!from.value.alive) return err('the dead do not claim');
 
@@ -1030,6 +1150,13 @@ export class Game {
       this.state.phaseEndsAt = undefined;
       this.stAdvancePhase(this.state.storytellerSeatId);
       changed = true;
+    }
+    // An agent that forgets to leave should not trap two other people all day.
+    for (const conversation of [...this.state.conversations]) {
+      if (now - conversation.lastSpokeAt >= CONVERSATION_IDLE_MS) {
+        this.closeConversation(conversation, 'the conversation petered out');
+        changed = true;
+      }
     }
     return changed;
   }

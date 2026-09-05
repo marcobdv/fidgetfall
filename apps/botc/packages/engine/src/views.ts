@@ -117,7 +117,16 @@ export interface GameView {
   /** Seconds until this phase ends itself, if a clock is running. */
   secondsLeft?: number;
   /** Highest event seq included in this view; pass it back as the cursor. */
-  cursor: number;
+  cursor: number;  /**
+   * Who has stepped aside with whom today, and how often. Everyone sees this —
+   * the square watches people walk off together even when it hears nothing.
+   */
+  metToday: { names: string[]; count: number }[];
+  /** Conversations standing apart right now, and who is in them. Public. */
+  openConversations: { names: string[] }[];
+  /** The people you are currently standing with, if you stepped aside. */
+  talkingWith?: string[];
+
 }
 
 const isST = (viewer: Viewer) => viewer.kind === 'storyteller';
@@ -251,9 +260,22 @@ export function buildView(game: Game, viewer: Viewer): GameView {
           })()
         : null;
 
+  const talkingWith =
+    viewer.kind === 'seat'
+      ? game
+          .conversationOf(viewer.seatId)
+          ?.seatIds.filter((id) => id !== viewer.seatId)
+          .map((id) => game.seat(id)?.name ?? '?')
+      : undefined;
+
   const view: GameView = {
     id: state.id,
     name: state.name,
+    metToday: game.metToday(),
+    openConversations: game
+      .openConversations()
+      .map((c) => ({ names: c.seatIds.map((id) => game.seat(id)?.name ?? '?') })),
+    ...(talkingWith?.length ? { talkingWith } : {}),
     phase: state.phase,
     day: state.day,
     script: {
@@ -329,14 +351,15 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       const to = (d['toNames'] as string[]) ?? [];
       return `[whisper ${d['fromName']} -> ${to.join(', ')}] ${d['text']}`;
     }
-    case 'chat.whisper.observed': {
-      const who = ((d['toSeatIds'] as string[]) ?? []).map((id) => name(id));
-      const from = name(d['fromSeatId'] as string);
-      if (who.length <= 1) {
-        return `${from} and ${who[0] ?? 'someone'} stepped aside to talk privately.`;
-      }
+    case 'conversation.opened': {
+      const who = (d['names'] as string[]) ?? [];
+      if (who.length <= 2) return `${who[0]} and ${who[1]} stepped aside to talk privately.`;
       const last = who[who.length - 1];
-      return `${from} pulled ${who.slice(0, -1).join(', ')} and ${last} aside together — ${who.length + 1} of them, out of earshot.`;
+      return `${who.slice(0, -1).join(', ')} and ${last} stepped aside together — ${who.length} of them, out of earshot.`;
+    }
+    case 'conversation.closed': {
+      const who = (d['names'] as string[]) ?? [];
+      return `${who.join(', ')} came back into the square — ${d['reason']}.`;
     }
     case 'chat.storyteller':
       return d['fromStoryteller']

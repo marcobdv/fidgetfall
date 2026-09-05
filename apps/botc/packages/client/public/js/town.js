@@ -31,6 +31,7 @@ const PHASE_TITLE = {
   lobby: 'Waiting for players',
   night: 'Night falls',
   day: 'The town talks',
+  gather: 'The town is gathered',
   nominations: 'Nominations are open',
   dusk: 'Dusk',
   over: 'The game is over',

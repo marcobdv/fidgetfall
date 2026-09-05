@@ -80,14 +80,14 @@ interface StArgs {
   character?: string | undefined;
   believes?: string | undefined;
   alignment?: 'good' | 'evil' | undefined;
-  phase?: 'night' | 'day' | 'nominations' | 'dusk' | undefined;
+  phase?: 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | undefined;
   label?: string | undefined;
   reminder_id?: string | undefined;
   restriction?: 'whisper' | 'nominate' | 'vote' | undefined;
   allowed?: boolean | undefined;
   winner?: 'good' | 'evil' | undefined;
   to_index?: number | undefined;
-  timer?: 'night' | 'day' | 'nominations' | 'dusk' | 'vote' | 'defence' | undefined;
+  timer?: 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | 'vote' | 'defence' | undefined;
   seconds?: number | null | undefined;
 }
 
@@ -440,17 +440,33 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           'A private word during the day. Name ONE player for a whisper, or up to FOUR to pull',
           'them aside together — a huddle. Everyone you name hears it and nobody else does.',
           '',
+          'YOU CAN ONLY BE IN ONE CONVERSATION AT A TIME. Your first whisper takes those',
+          'people aside and the three of you are standing apart from the square until you call',
+          '`leave`. While you are standing there you may keep talking to them by whispering with',
+          'no `player`/`players` at all — and you cannot talk to anybody else, and nobody else',
+          'can talk to them. If you try to whisper someone who is already deep in conversation,',
+          'you are told who they are with. That is real information: go and use it.',
+          '',
+          'This makes time the scarce thing. You cannot canvass the whole town in a day — you',
+          'get a handful of conversations, so choose who is worth one, and get out when it is',
+          'done. `leave` early and often.',
+          '',
           'A huddle is how an alliance actually gets built: three good players who trust each',
           'other and pool what they know are far harder to pick apart than three who each',
           'worked it out alone. It is also the most dangerous thing you can do, because one of',
           'them may be evil and you have just handed them everything at once.',
           '',
-          'The town sees who stepped aside together and how many of you there were. It never',
-          'hears a word of it — but a group that keeps huddling is itself public information.',
+          'The town sees who stepped aside together and how many of you there were, and every',
+          'look shows a running tally of who has met whom today. It never hears a word of it —',
+          'but a group that keeps huddling is public information, and evil should be careful:',
+          'three people who keep walking off together get read as a bloc, and blocs get hanged.',
         ].join('\n'),
       inputSchema: {
         seat_token: SEAT_TOKEN,
-        player: z.string().optional().describe('One player, by name or seat number.'),
+        player: z
+          .string()
+          .optional()
+          .describe('One player, by name or seat number. Omit both when you are already standing with someone.'),
         players: z
           .array(z.string())
           .optional()
@@ -460,13 +476,28 @@ export function buildMcpServer(deps: McpDeps): McpServer {
     },
     async ({ seat_token, player, players, text: body }) => {
       const named = players?.length ? players : player ? [player] : [];
-      if (!named.length) return fail('name at least one player to talk to');
-      return run(seat_token, { type: 'whisper', targets: named, text: body }, () =>
-        named.length === 1
-          ? `You whispered to ${named[0]}.`
-          : `You pulled ${named.join(', ')} aside together.`,
-      );
+      return run(seat_token, { type: 'whisper', targets: named, text: body }, (room, seatId) => {
+        const with_ = room.game
+          .conversationOf(seatId)
+          ?.seatIds.filter((id) => id !== seatId)
+          .map((id) => room.game.seat(id)?.name ?? '?');
+        return with_?.length
+          ? `Said to ${with_.join(' and ')}. You are still standing apart with them — \`leave\` when you are done.`
+          : 'Said.';
+      });
     },
+  );
+
+  server.registerTool(
+    'leave',
+    {
+      title: 'Step back into the square',
+      description:
+        'End the private conversation you are standing in and rejoin the town. Everyone sees you come back. Until you do this you cannot talk to anybody else, and neither can the people you took aside — so leave as soon as the conversation is finished. A day is only so long.',
+      inputSchema: { seat_token: SEAT_TOKEN },
+    },
+    async ({ seat_token }) =>
+      run(seat_token, { type: 'leave_conversation' }, () => 'You stepped back into the square.'),
   );
 
   server.registerTool(
@@ -648,7 +679,12 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '  assign (player, character, alignment?, believes?) — put a character in the grimoire.',
           '    "believes" is for the Drunk and the Sleeper: character is the truth, believes is',
           '    what you tell them they are. They see only the lie; you see both.',
-          '  advance_phase / set_phase (phase) — night -> day -> nominations -> dusk',
+          '  advance_phase / set_phase (phase) — night -> day -> gather -> nominations -> dusk.',
+          '    GATHER is the moment you call the town in: private conversation closes, every',
+          '    huddle breaks up, and the only thing anyone can do is speak where all of them',
+          '    hear it. That is where claims get made out loud and where the day\'s argument',
+          '    actually happens. Give it a clock (try 120) or call it by hand when the private',
+          '    time has run its course.',
           '  wake (player, text? as the prompt) / sleep (player)',
           '  info (player, text) — give a player what their ability shows them',
           '  message (player, text) — a private word; announce (text) — tell the whole town',
@@ -680,14 +716,14 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           .optional()
           .describe('Character id this player is told they are, when that is a lie (Drunk, Sleeper).'),
         alignment: z.enum(['good', 'evil']).optional(),
-        phase: z.enum(['night', 'day', 'nominations', 'dusk']).optional(),
+        phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']).optional(),
         label: z.string().optional().describe('Reminder token text.'),
         reminder_id: z.string().optional(),
         restriction: z.enum(['whisper', 'nominate', 'vote']).optional(),
         allowed: z.boolean().optional(),
         winner: z.enum(['good', 'evil']).optional(),
         to_index: z.number().int().optional(),
-        timer: z.enum(['night', 'day', 'nominations', 'dusk', 'vote', 'defence']).optional(),
+        timer: z.enum(['night', 'day', 'gather', 'nominations', 'dusk', 'vote', 'defence']).optional(),
         seconds: z.number().int().nullable().optional().describe('5-3600. Omit to switch that clock off.'),
       },
     },

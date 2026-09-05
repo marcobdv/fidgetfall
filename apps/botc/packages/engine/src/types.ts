@@ -8,9 +8,14 @@ export type SeatKind = 'human' | 'agent';
  * Phases follow a real game: night, then the day's open discussion, then
  * nominations, then dusk (when the execution resolves) and back to night.
  */
-export type Phase = 'lobby' | 'night' | 'day' | 'nominations' | 'dusk' | 'over';
+export type Phase = 'lobby' | 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | 'over';
 
-export const PHASE_CYCLE: Phase[] = ['night', 'day', 'nominations', 'dusk'];
+/**
+ * night -> day -> gather -> nominations -> dusk. The day is when people wander off
+ * in twos and threes; the gather is when the Storyteller calls the town in and the
+ * only thing anyone can do is speak where everyone hears it.
+ */
+export const PHASE_CYCLE: Phase[] = ['night', 'day', 'gather', 'nominations', 'dusk'];
 
 /** A character as the script-tool JSON describes it. Only `id`/`name`/`team` are required. */
 export interface Character {
@@ -107,6 +112,7 @@ export interface SeatNote {
 export interface Timers {
   night?: number;
   day?: number;
+  gather?: number;
   nominations?: number;
   dusk?: number;
   /** How long a single nomination stays open for voting. */
@@ -202,6 +208,24 @@ export interface GameState {
   phaseEndsAt?: number;
   /** viewer seat id -> target seat id -> that viewer's private note. */
   notes: Map<string, Map<string, SeatNote>>;
+  /** Private conversations currently standing apart from the square. */
+  conversations: Conversation[];
+  /** Who has stepped aside with whom today, and how often. Cleared each night. */
+  metToday: { seatIds: string[]; count: number }[];
+}
+
+/**
+ * A private conversation. You can only be in one at a time, because in the real
+ * game you have to physically walk over and stand there — which is what makes
+ * "who has Ewan spent his day with" worth watching.
+ */
+export interface Conversation {
+  id: string;
+  seatIds: string[];
+  openedBy: string;
+  openedAt: number;
+  /** Bumped on every line spoken, so an abandoned huddle can be swept up. */
+  lastSpokeAt: number;
 }
 
 export type Result<T = void> = { ok: true; value: T } | { ok: false; error: string };

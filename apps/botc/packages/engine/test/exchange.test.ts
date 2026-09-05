@@ -161,10 +161,10 @@ test('a huddle reaches everyone named and nobody else', () => {
   assert.equal(canSee(said, { kind: 'seat', seatId: t.byName('Dee').id }), false, 'Dee heard it');
 
   // But Dee can see that it happened, and that three of them were in it.
-  const observed = t.game.log.find((e) => e.type === 'chat.whisper.observed');
+  const observed = t.game.log.find((e) => e.type === 'conversation.opened');
   assert.ok(observed);
   assert.equal(canSee(observed, { kind: 'seat', seatId: t.byName('Dee').id }), true);
-  assert.match(describeEvent(t.game, observed), /Ana pulled Ben and Cal aside together — 3 of them/);
+  assert.match(describeEvent(t.game, observed), /Ana, Ben and Cal stepped aside together — 3 of them/);
 });
 
 test('a huddle is capped, and cannot include yourself', () => {
@@ -182,7 +182,7 @@ test('naming the same player twice is one seat in the huddle, not two', () => {
   const t = day(['Ana', 'Ben', 'Cal']);
   const ben = t.byName('Ben').id;
   expectOk(t.game.whisper(t.byName('Ana').id, [ben, ben], 'once'));
-  const observed = t.game.log.find((e) => e.type === 'chat.whisper.observed');
+  const observed = t.game.log.find((e) => e.type === 'conversation.opened');
   assert.ok(observed);
   // Two people stepped aside, not three, so it reads as an ordinary whisper.
   assert.match(describeEvent(t.game, observed), /Ana and Ben stepped aside to talk privately/);

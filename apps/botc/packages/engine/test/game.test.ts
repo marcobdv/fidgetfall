@@ -45,11 +45,12 @@ describe('seating and setup', () => {
 });
 
 describe('phases', () => {
-  it('cycles night -> day -> nominations -> dusk -> night and counts days', () => {
+  it('cycles night -> day -> gather -> nominations -> dusk -> night and counts days', () => {
     const t = table(['Ana', 'Ben', 'Cal']);
     assert.equal(t.game.state.phase, 'night');
     assert.equal(t.game.state.day, 1);
     assert.equal(expectOk(t.game.stAdvancePhase(t.st.id)), 'day');
+    assert.equal(expectOk(t.game.stAdvancePhase(t.st.id)), 'gather');
     assert.equal(expectOk(t.game.stAdvancePhase(t.st.id)), 'nominations');
     assert.equal(expectOk(t.game.stAdvancePhase(t.st.id)), 'dusk');
     assert.equal(expectOk(t.game.stAdvancePhase(t.st.id)), 'night');
@@ -89,7 +90,7 @@ describe('chat', () => {
     assert.equal(canSee(whisper, { kind: 'spectator' }), false);
 
     // ...but the town sees that they stepped aside.
-    const observed = t.game.log.find((e) => e.type === 'chat.whisper.observed');
+    const observed = t.game.log.find((e) => e.type === 'conversation.opened');
     assert.ok(observed);
     assert.equal(canSee(observed, { kind: 'seat', seatId: t.byName('Cal').id }), true);
   });

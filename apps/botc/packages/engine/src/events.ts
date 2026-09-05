@@ -32,7 +32,9 @@ export interface EventPayloads {
     toNames: string[];
     text: string;
   };
-  'chat.whisper.observed': { fromSeatId: string; toSeatIds: string[] };
+  /** Public: the square sees people step apart, and how many of them. */
+  'conversation.opened': { conversationId: string; seatIds: string[]; names: string[] };
+  'conversation.closed': { conversationId: string; seatIds: string[]; names: string[]; reason: string };
   'chat.storyteller': { fromSeatId: string; toSeatId: string; text: string; fromStoryteller: boolean };
 
   'st.wake': { seatId: string; prompt?: string };

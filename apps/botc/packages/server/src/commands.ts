@@ -9,7 +9,8 @@ import type { Room } from './rooms.js';
  */
 export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('say'), text: z.string() }),
-  z.object({ type: z.literal('whisper'), targets: z.array(z.string()).min(1), text: z.string() }),
+  z.object({ type: z.literal('whisper'), targets: z.array(z.string()), text: z.string() }),
+  z.object({ type: z.literal('leave_conversation') }),
   z.object({ type: z.literal('message_storyteller'), text: z.string() }),
   z.object({ type: z.literal('nominate'), target: z.string() }),
   z.object({ type: z.literal('vote'), vote: z.boolean() }),
@@ -42,7 +43,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
 
   z.object({ type: z.literal('st_start') }),
   z.object({ type: z.literal('st_advance_phase') }),
-  z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'nominations', 'dusk']) }),
+  z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']) }),
   z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional(), believes: z.string().optional() }),
   z.object({ type: z.literal('st_set_alignment'), target: z.string(), alignment: z.enum(['good', 'evil']) }),
   z.object({ type: z.literal('st_add_reminder'), target: z.string(), label: z.string(), source: z.string().optional() }),
@@ -64,7 +65,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_end_game'), winner: z.enum(['good', 'evil']), reason: z.string() }),
   z.object({
     type: z.literal('st_set_timer'),
-    key: z.enum(['night', 'day', 'nominations', 'dusk', 'vote', 'defence']),
+    key: z.enum(['night', 'day', 'gather', 'nominations', 'dusk', 'vote', 'defence']),
     seconds: z.number().int().nullable(),
   }),
   z.object({ type: z.literal('st_clear_timers') }),
@@ -122,6 +123,8 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
       }
       return game.whisper(seatId, ids, command.text);
     }
+    case 'leave_conversation':
+      return game.leaveConversation(seatId);
 
     case 'message_storyteller':
       return game.messageStoryteller(seatId, command.text);

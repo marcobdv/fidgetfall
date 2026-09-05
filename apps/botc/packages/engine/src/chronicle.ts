@@ -30,6 +30,7 @@ interface Act {
   }[];
   said: { name: string; text: string }[];
   whispers: Map<string, number>;
+  overheard: { from: string; to: string[]; text: string }[];
   toldYou: string[];
   wokeYou: number;
   notices: string[];
@@ -45,6 +46,7 @@ const emptyAct = (kind: Act['kind'], day: number): Act => ({
   nominations: [],
   said: [],
   whispers: new Map(),
+  overheard: [],
   toldYou: [],
   wokeYou: 0,
   notices: [],
@@ -128,9 +130,18 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
       case 'chat.public':
         current.said.push({ name: String(d['fromName']), text: String(d['text']) });
         break;
-      case 'chat.whisper.observed': {
-        const ids = (d['toSeatIds'] as string[]) ?? [];
-        const group = [name(d['fromSeatId']), ...ids.map((id) => name(id))].sort().join(' & ');
+      case 'chat.whisper':
+        // You only ever reach this if you were in the conversation — or you are the
+        // Storyteller, who hears everything. Either way it belongs in your record.
+        current.overheard.push({
+          from: String(d['fromName']),
+          to: ((d['toNames'] as string[]) ?? []).map(String),
+          text: String(d['text']),
+        });
+        break;
+      case 'conversation.opened': {
+        const names = ((d['names'] as string[]) ?? []).map(String);
+        const group = [...names].sort().join(' & ');
         current.whispers.set(group, (current.whispers.get(group) ?? 0) + 1);
         break;
       }
@@ -223,6 +234,19 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
 
   // What the Storyteller said out loud is part of the record, not scaffolding.
   for (const notice of act.notices) lines.push(`The Storyteller: *${notice}*`);
+
+  // The private layer. For a player this is only what they were standing in; for the
+  // Storyteller it is all of it, which is where the Demon's bluffs live.
+  if (act.overheard.length) {
+    lines.push('', '**Out of earshot:**');
+    for (const line of act.overheard.slice(0, MAX_QUOTED_PER_DAY)) {
+      lines.push(`- **${line.from}** to **${line.to.join(' and ')}:** "${line.text}"`);
+    }
+    if (act.overheard.length > MAX_QUOTED_PER_DAY) {
+      lines.push(`- *…and ${act.overheard.length - MAX_QUOTED_PER_DAY} more.*`);
+    }
+    lines.push('');
+  }
 
   const whispers = [...act.whispers.entries()].sort((a, b) => b[1] - a[1]);
   if (whispers.length) {
