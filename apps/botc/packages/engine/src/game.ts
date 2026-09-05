@@ -894,6 +894,9 @@ export class Game {
         PUBLIC,
         from.value.id,
       );
+      // Stepping aside to claim is stepping aside. It belongs in the day's tally of
+      // who met whom, exactly as a whisper does.
+      this.recordMeeting([from.value.id, to.id]);
     }
     return ok(undefined);
   }

@@ -27,11 +27,13 @@ interface Act {
     tally?: number;
     threshold?: number;
     result?: string;
+    votes: { name: string; vote: boolean; ghost: boolean }[];
   }[];
   said: { name: string; text: string }[];
   whispers: Map<string, number>;
   overheard: { from: string; to: string[]; text: string }[];
   abilities: string[];
+  claims: string[];
   records: string[];
   /** Who was woken in the night, and what each of them was shown. */
   woken: { seatId: string; name: string; wakes: number; told: string[]; chose: string[] }[];
@@ -50,6 +52,7 @@ const emptyAct = (kind: Act['kind'], day: number): Act => ({
   whispers: new Map(),
   overheard: [],
   abilities: [],
+  claims: [],
   records: [],
   woken: [],
   notices: [],
@@ -144,6 +147,7 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
         current.nominations.push({
           nominator: String(d['nominatorName']),
           nominee: String(d['nomineeName']),
+          votes: [],
         });
         break;
       case 'nomination.closed': {
@@ -167,6 +171,34 @@ function collect(game: Game, events: AnyEvent[]): Act[] {
           text: String(d['text']),
         });
         break;
+      case 'player.claim': {
+        // A claim is an act of the day. The reveal section lists who said what to
+        // whom at the end; this is the moment it was said, in sequence, which is
+        // the only place the town's reasoning is legible.
+        const names = ((d['characterNames'] as string[]) ?? []).map(String);
+        const to = d['toName'] ? `to ${String(d['toName'])}, privately` : 'to the whole town';
+        if (!names.length) {
+          current.claims.push(`**${d['name']}** took back their claim ${to}`);
+        } else {
+          const what = names.length > 1 ? `one of ${list(names)}` : `the ${names[0]}`;
+          const contested = (d['contestedBy'] as string[]) ?? [];
+          current.claims.push(
+            `**${d['name']}** claimed ${what} ${to}${contested.length ? ` — so did ${list(contested)}` : ''}`,
+          );
+        }
+        break;
+      }
+      case 'vote.cast': {
+        const nom = current.nominations.at(-1);
+        if (nom) {
+          nom.votes.push({
+            name: String(d['name']),
+            vote: Boolean(d['vote']),
+            ghost: Boolean(d['ghost']),
+          });
+        }
+        break;
+      }
       case 'player.ability': {
         const targets = ((d['targetNames'] as string[]) ?? []).map(String);
         current.abilities.push(
@@ -312,6 +344,10 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
   for (const record of act.records) lines.push(`> ${record}`);
 
   // Abilities used in the open are acts of the day, not chatter, and read as such.
+  if (act.claims.length) {
+    lines.push(['**Claims made:**', ...act.claims.map((line) => `- ${line}`)].join('\n'));
+  }
+
   if (act.abilities.length) {
     lines.push(['**In the open:**', ...act.abilities.map((line) => `- ${line}`)].join('\n'));
   }
@@ -339,6 +375,14 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
   }
 
   for (const nomination of act.nominations) {
+    const hands = nomination.votes.length
+      ? [
+          '',
+          ...nomination.votes.map(
+            (v) => `  - ${v.name}: ${v.vote ? 'YES' : 'no'}${v.ghost ? ' (ghost vote)' : ''}`,
+          ),
+        ].join('\n')
+      : '';
     if (nomination.result === 'on-block') {
       lines.push(
         pick(index + nomination.nominee.length, [
@@ -364,6 +408,9 @@ function narrateDay(act: Act, pick: ReturnType<typeof picker>, index: number): s
         ]),
       );
     }
+    // Who raised a hand is the record of the day. A tally alone throws away every
+    // pattern anyone ever reasons from — who moved together, who never votes.
+    if (hands) lines.push(`${lines.pop()}${hands}`);
   }
 
   for (const execution of act.executions) {

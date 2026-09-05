@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildView } from '../src/views.js';
 import { writeChronicle } from '../src/chronicle.js';
-import { table, expectOk, expectErr } from './helpers.js';
+import { table, expectOk, expectErr, toNominations } from './helpers.js';
 
 /**
  * You can only be in one conversation at a time, because at a real table you have
@@ -164,4 +164,42 @@ test('the chronicle records what a player chose, not only what they were told', 
   // Another player's night is not theirs to read.
   const cal = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id }, { reveal: true });
   assert.ok(!cal.includes('I choose Ben'), 'a night choice stays private');
+});
+
+/** Findings from the chronicle audit: content that was being silently dropped. */
+
+test('claims appear in the day they were made, not only in the reveal', () => {
+  const t = day(['Ana', 'Ben', 'Cal']);
+  expectOk(t.game.claim(t.byName('Ana').id, ['seer'], null));
+  expectOk(t.game.claim(t.byName('Ben').id, ['baker', 'oaf'], t.byName('Cal').id));
+  expectOk(t.game.stEndGame(t.st.id, 'good', 'done'));
+
+  const cal = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Cal').id }, { reveal: true });
+  assert.match(cal, /\*\*Ana\*\* claimed the Seer to the whole town/);
+  assert.match(cal, /\*\*Ben\*\* claimed one of Baker and Oaf to Cal, privately/);
+
+  // Ana was not in that private claim and does not get to read it.
+  const ana = writeChronicle(t.game, { kind: 'seat', seatId: t.byName('Ana').id }, { reveal: true });
+  assert.ok(!ana.includes('claimed one of Baker and Oaf'), 'a private claim stays private');
+});
+
+test('the chronicle records who raised a hand, not just the tally', () => {
+  const t = table(['Ana', 'Ben', 'Cal']);
+  toNominations(t);
+  expectOk(t.game.nominate(t.byName('Ana').id, t.byName('Ben').id));
+  expectOk(t.game.castVote(t.byName('Ana').id, true));
+  expectOk(t.game.castVote(t.byName('Cal').id, false));
+  expectOk(t.game.stCloseNomination(t.st.id));
+  expectOk(t.game.stEndGame(t.st.id, 'good', 'done'));
+
+  const story = writeChronicle(t.game, { kind: 'storyteller' }, { reveal: true });
+  assert.match(story, /- Ana: YES/);
+  assert.match(story, /- Cal: no/);
+});
+
+test('a private claim counts as stepping aside', () => {
+  const t = day(['Ana', 'Ben', 'Cal']);
+  expectOk(t.game.claim(t.byName('Ana').id, ['seer'], t.byName('Ben').id));
+  const cal = buildView(t.game, { kind: 'seat', seatId: t.byName('Cal').id });
+  assert.deepEqual(cal.metToday[0], { names: ['Ana', 'Ben'], count: 1 });
 });

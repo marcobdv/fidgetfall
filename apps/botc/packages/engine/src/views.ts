@@ -420,6 +420,8 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       });
       return ['THE ROLL CALL — everyone, out loud:', ...rows].join('\n');
     }
+    case 'st.record':
+      return `[for the record, unsaid] ${d['text']}`;
     case 'timer.lastcall':
       return `${d['seconds']} seconds. Last call on ${d['phase']}.`;
     case 'conversation.opened': {
