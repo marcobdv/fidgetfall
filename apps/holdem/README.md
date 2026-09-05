@@ -38,7 +38,7 @@ down**. That is the whole setup.
 Development:
 
 ```bash
-npm test             # 105 tests: rules, evaluator, coach, room, HTTP, MCP
+npm test             # 109 tests: rules, evaluator, coach, room, HTTP, MCP
 npm run typecheck
 ```
 
@@ -105,6 +105,22 @@ http://localhost:8787/mcp
 The stdio process is a thin proxy: it forwards every tool call to the table server over
 its REST API, so a local agent plays at a table hosted anywhere.
 
+### Poking at it by hand
+
+`tools/mcp-cli.mjs` is a one-shot MCP client: it connects to `/mcp`, calls one tool, prints
+what came back, and exits. Handy for debugging, and it lets an agent host that cannot mount
+an MCP server (a shell, a CI job) still play a hand.
+
+```bash
+node tools/mcp-cli.mjs tools                    # list the tools
+node tools/mcp-cli.mjs create_table '{"bots":["balanced"]}'
+node tools/mcp-cli.mjs join_table '{"tableId":"bd7k2p","name":"Ada"}'
+node tools/mcp-cli.mjs wait_for_turn '{"token":"bd7k2p.…"}'
+node tools/mcp-cli.mjs act '{"token":"bd7k2p.…","action":"raise","amount":80}'
+```
+
+Set `HOLDEM_SERVER` to point it at a server other than `http://localhost:8787`.
+
 ### A minimal agent loop
 
 ```
@@ -155,7 +171,8 @@ src/bots/      the four opponent archetypes
 src/server/    the room (identity, clocks, bot turns) and the HTTP/WS server
 src/mcp/       the agent-facing tools, the text renderer, and both transports
 public/        the browser client — no framework, no build step
-test/          105 tests
+tools/         mcp-cli.mjs, a one-shot MCP client for debugging
+test/          109 tests
 ```
 
 Two properties are worth calling out because everything else leans on them:
