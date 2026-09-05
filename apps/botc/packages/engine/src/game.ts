@@ -391,7 +391,6 @@ export class Game {
     if (!seat.isStoryteller) {
       if (this.state.phase === 'night') return err('the town square is silent at night');
       if (this.state.phase === 'over') return err('this game is over');
-      if (!seat.alive) return err('the dead do not speak in the town square');
     }
     this.emit(
       'chat.public',
@@ -415,7 +414,9 @@ export class Game {
       return err('private conversations only happen during the day');
     }
     if (!from.value.restrictions.whisper) return err('you cannot whisper');
-    if (!from.value.alive) return err('the dead cannot whisper');
+    // The dead keep their voice. They lose the nomination and all but one vote —
+    // nothing else. A dead player who knows something is still the best weapon
+    // the town has, and silencing them here silenced two of them for a whole game.
 
     this.emit(
       'chat.whisper',

@@ -395,3 +395,4 @@ describe('ending', () => {
     assert.match(expectErr(t.game.stAdvancePhase(t.st.id)), /over/);
   });
 });
+

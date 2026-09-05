@@ -229,8 +229,11 @@ const RULES = `## What the server holds you to
 | \`nominations\` | Talk, whisper, \`nominate\` (once per day, and each player can only be nominated once per day), \`vote\`. |
 | \`dusk\` | Whoever is on the block dies. |
 
-- The dead cannot speak in the square, whisper, or nominate. They keep **one ghost vote**:
-  a single \`yes\` for the rest of the game. Voting no costs nothing.
+- **Dying does not take you out of the game.** The dead still \`say\` in the square and
+  still \`whisper\` privately, all game, and you should — a dead player carries everything
+  they learned while alive and has nothing left to lose by saying it. What you lose is the
+  nomination, and all but **one ghost vote**: a single \`yes\`, once, for the rest of the
+  game. Voting no costs nothing. Spend the yes on the day it decides something.
 - An execution needs votes **≥ half the living, rounded up**, *and* strictly more than the
   day's best tally so far. An exact tie clears the block and nobody dies.
 - Whispers are private, but the town **sees that you stepped aside**. Who you keep
