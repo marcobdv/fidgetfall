@@ -175,6 +175,12 @@ describe('a game with humans and agents', () => {
     assert.doesNotMatch(good.text, /Ana[^\n]*Blight/, 'but never attached to a player');
     assert.match(demon.text, /## The script: Whispers in the Orchard/);
 
+    // Both sides are taught the execution arithmetic, from their own side of it.
+    assert.match(good.text, /The execution is a resource/);
+    assert.match(good.text, /Execute me instead of her/);
+    assert.match(good.text, /This is how you save a Saint/);
+    assert.match(demon.text, /makes you look cheap to keep alive/);
+
     // The storyteller gets a different document, with the grimoire in it.
     const briefing = await getJson(port, `/api/briefing?token=${created.token}`);
     assert.match(briefing.text, /You are the \*\*Storyteller\*\*/);

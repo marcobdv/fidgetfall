@@ -26,6 +26,10 @@ demon runs out of people to kill.
   demon's kill away from the player who actually matters. That is a sacrifice play, and
   it is one of the strongest things a townsfolk can do. Tell nobody, including the people
   you like.
+- **Know whether you are spent or live.** If your ability already fired and will not fire
+  again, your body is the last thing you have — offer it before the town wastes its
+  execution on someone who still produces. If you fire every night, say so, and make them
+  spend the day on someone cheaper than you.
 - **If you are going to be executed, spend the day.** Say the most useful true thing you
   know before the vote closes, and go.`,
 
@@ -45,7 +49,11 @@ around, and a vote that can be trusted.
   consider that the fault is you, and let the town price that in.
 - **Offer yourself.** A day the town spends executing you is a day it does not spend
   executing a live information role. Sometimes that trade is right — take it deliberately,
-  not by accident.`,
+  not by accident.
+- **If you are the Saint, this cuts the other way.** Your execution ends the game for your
+  own side, so you are the most expensive body at the table. Say so early enough that the
+  town can find a cheaper one — a spent Investigator or Chef — rather than late enough that
+  it reads as a defence.`,
 
   minion: `## Playing a Minion
 
@@ -171,6 +179,38 @@ Towns forget this constantly and execute the wrong half of the pair.
 reads as a defence. Give the information, not your conclusion. Keep it small; every extra
 detail is another thing that can be shown to be false. And if you are running more than one
 story, know exactly who heard which.
+`;
+
+const SPENDING = `## The execution is a resource. Spend it on someone cheap.
+
+The town gets one execution a day. What it costs depends entirely on who dies, and almost
+nobody at the table does this arithmetic.
+
+**Your ability is either spent or live.** Some characters give everything they will ever
+give on the first night — a Washerwoman, a Librarian, an Investigator, a Chef. After that
+their body is their last resource. Others produce something new every night — an Empath, a
+Fortune Teller, an Undertaker, a Monk — and are worth more alive on day four than they were
+on day one.
+
+**So when the town is about to execute badly, a spent role should offer themselves.** Say it
+plainly: *"I'm the Chef. I gave you my number on day one and I have nothing else coming.
+Execute me instead of her."* You lose nothing the town had, and you buy back the day.
+
+**This is how you save a Saint.** If someone claims the Saint and you believe them, the
+execution still has to go somewhere or the day is wasted. A spent role is where it goes.
+That trade — a used-up Investigator for a Saint the town would otherwise hang — wins games,
+and it is invisible to a table that only asks "who is most suspicious" instead of "who is
+cheapest to lose".
+
+**Before you vote, ask what being wrong costs.** Executing a live information role costs you
+every night they had left. Executing a claimed Saint may cost you the game on the spot.
+Executing a spent role costs a body. Those are not the same vote.
+
+**And the mirror, if you are evil:** claiming a first-night role is doubly good. It cannot
+be disproved, *and* it makes you look cheap to keep alive. A town that treats "my ability is
+spent" as a reason to leave someone alive has handed you the rest of the game. Volunteering
+to be executed when you know the vote will not pass is the cheapest credibility at the table.
+
 `;
 
 const RULES = `## What the server holds you to
@@ -315,7 +355,7 @@ export function writeBriefing(room: Room, seatId: string, audience?: 'agent' | '
   const play = you?.isTraveller ? GROUP_PLAY['traveller'] : GROUP_PLAY[group];
   if (play) out.push('', play);
 
-  out.push('', DECEPTION, '', CLAIMS, '', RULES);
+  out.push('', DECEPTION, '', CLAIMS, '', SPENDING, '', RULES);
   if (view.secondsLeft !== undefined || Object.keys(view.timers).length) out.push('', CLOCK);
   if (kind === 'agent') out.push('', LOOP, '', VOICE);
   else out.push('', HUMAN_NOTES);
@@ -381,6 +421,16 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
           '  You do, and you say why.',
           '',
         ]),
+    '## Narrate it',
+    '',
+    'Say things out loud that are not instructions. Announce a death with a line of story',
+    'rather than a fact — who found them, what the town noticed, what the morning felt like.',
+    'Open the day, mark the moment a vote turns, and give the execution a sentence. It costs',
+    'you nothing, it is most of what the players will remember, and the chronicle keeps every',
+    'announcement you make, so your narration *is* the record of this game.',
+    '',
+    'Do not narrate anything only you know. Colour the facts the town already has.',
+    '',
     '## Giving information',
     '',
     '- Decide what makes the better game, then find the reading of the rules that supports it.',

@@ -45,5 +45,10 @@ loud — "if I'm the drunk, then my read on Cal is worthless" — and let the to
 - **Force the conversation.** You can afford to nominate on a hunch. A townsfolk with a
   live ability cannot always risk it.
 
+If you are the Saint, the arithmetic runs the other way: your execution ends the game for
+your own side, which makes you the most expensive body at the table. Say so early enough
+that the town can go and find a cheap one — a spent Investigator or Chef, who has already
+given everything they will ever give — rather than late enough that it reads as a defence.
+
 Your win condition is the town's. You just get there by being reliable rather than by
 being right.

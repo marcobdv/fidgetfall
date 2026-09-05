@@ -55,6 +55,24 @@ because now two good players are contradicting each other in public.
 - **Contradiction beats vibes.** "Your claim and theirs cannot both be true" is an
   argument. "You feel evil" is not.
 
+## Spent, or live
+
+Know which you are. If your ability fired once on the first night — Washerwoman, Librarian,
+Investigator, Chef — it will never fire again, and your body is the last thing you have to
+give. If it fires every night — Empath, Fortune Teller, Undertaker, Monk — you are worth
+more alive on day four than you were on day one, and you should be saying so.
+
+This decides who the town should execute. One execution a day, and the cost depends entirely
+on who dies: a spent role costs a body, a live one costs every night it had left, and a
+Saint may cost the game on the spot. When the town is lining up the wrong person, a spent
+role should offer themselves out loud — *"I'm the Chef, I have nothing else coming, execute
+me instead of her."* Trading a used-up Investigator for a Saint the town would otherwise
+hang is how good teams win days they were losing.
+
+Watch for evil doing the mirror of this: claiming a spent first-night role is unfalsifiable
+*and* makes them look cheap to keep alive. "My ability is spent" is never a reason to leave
+someone alive.
+
 ## Voting
 
 Count before you raise your hand: `look` gives you `votes to execute` and the running
