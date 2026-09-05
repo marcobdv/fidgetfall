@@ -1145,8 +1145,12 @@ export class Game {
       }
     }
     nomination.votes.push({ seatId: from.value.id, vote, ghost, at: this.now() });
+    // The dead vote too, while they still hold a ghost vote — "yet to vote" was
+    // hitting zero with people left who could still swing it.
     const eligible =
-      nomination.kind === 'exile' ? this.players().length : this.players().filter((s) => s.alive).length;
+      nomination.kind === 'exile'
+        ? this.players().length
+        : this.players().filter((s) => s.alive || s.ghostVote).length;
     this.emit(
       'vote.cast',
       {

@@ -236,6 +236,17 @@ describe('reporting deaths and votes', () => {
     assert.equal(describeEvent(t.game, death!), 'Ben is dead, executed by the town.');
   });
 
+  it('counts the dead who still hold a ghost vote as yet to vote', () => {
+    const t = table(['Ana', 'Ben', 'Cal', 'Dee']);
+    expectOk(t.game.stKill(t.st.id, t.byName('Dee').id, 'the demon'));
+    toNominations(t);
+    expectOk(t.game.nominate(t.byName('Ana').id, t.byName('Ben').id));
+    expectOk(t.game.castVote(t.byName('Ana').id, true));
+    const vote = t.game.log.filter((e) => e.type === 'vote.cast').at(-1);
+    // 3 living plus Dee, who can still spend a ghost vote, minus the one cast.
+    assert.match(describeEvent(t.game, vote!), /3 yet to vote/);
+  });
+
   it('carries the running count on every vote', () => {
     const t = table(['Ana', 'Ben', 'Cal', 'Dee', 'Eve']);
     toNominations(t);
