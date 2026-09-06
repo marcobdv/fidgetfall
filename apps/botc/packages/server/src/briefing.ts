@@ -276,6 +276,14 @@ const RULES = `## What the server holds you to
 | \`nominations\` | Talk, whisper, \`nominate\` (once per day, and each player can only be nominated once per day), \`vote\`. |
 | \`dusk\` | Whoever is on the block dies. |
 
+- **Nobody dies on the first night.** The Demon does not kill on night one, so the first
+  morning always opens with everybody alive. That is the rule, not a quiet night, not a
+  cautious Demon, and not a Monk who guessed well — it tells you nothing whatsoever. This
+  is not the game you may be thinking of: there is no opening bloodbath here, and at a real
+  table nobody so much as mentions it. Do not open day one with "nobody died", do not read
+  relief or significance into it, and do not spend a line of your first morning on it. Day
+  one is for claims and trades. The first body arrives on the second morning.
+
 - **Dying does not take you out of the game.** The dead still \`say\` in the square and
   still \`whisper\` privately, all game, and you should — a dead player carries everything
   they learned while alive and has nothing left to lose by saying it. What you lose is the
@@ -654,6 +662,16 @@ function writeStorytellerBriefing(view: GameView, room: Room, kind: 'agent' | 'h
     'The rule of thumb: **the game is played now, the record is written after.** If a sentence',
     'would be better in the recap than in the square, it belongs in the recap, and the only',
     'reason to say it out loud today is that you want to be admired today.',
+    '',
+    '## Do not announce the first morning as though something happened',
+    '',
+    'Nothing kills on the first night on any of these scripts, so day one always opens with',
+    'everybody alive. It is a non-event and a table treats it as one: you say good morning,',
+    'you set the clock running, and the town starts trading. Saying "nobody died" — or worse,',
+    '"nobody died, there is no kill on the first night" — announces a rule as if it were news',
+    'and invites nine players to spend their opening lines remarking on the absence of a body',
+    'that was never coming. Open day one on the town, the script, or whatever is actually at',
+    'stake. The first real dawn announcement is the second morning.',
     '',
     '## If you are running the Atheist',
     '',
