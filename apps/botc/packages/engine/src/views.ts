@@ -134,6 +134,12 @@ export interface GameView {
    */
   nightOrder?: { order: number; characterName: string; inPlay?: string; ability?: string }[];
   /**
+   * Storyteller only: where this grimoire came from. Either the circle drew from a
+   * seeded bag — in which case the seed is here and the deal can be replayed — or
+   * seats were arranged by hand, and this says which ones.
+   */
+  deal?: { seed?: string; handSetNames: string[] };
+  /**
    * Storyteller only: abilities used out loud that you have not ruled on yet. The
    * whole point is that one cannot go past you in the noise of a day.
    */
@@ -311,6 +317,17 @@ export function buildView(game: Game, viewer: Viewer): GameView {
       : {}),
     ...(isST(viewer)
       ? {
+          deal: {
+            ...(state.deal ? { seed: state.deal.seed } : {}),
+            handSetNames: game
+              .players()
+              .filter((seat) => seat.handSet && seat.characterId)
+              .map((seat) => seat.name),
+          },
+        }
+      : {}),
+    ...(isST(viewer)
+      ? {
           nightOrder: game.nightOrder().map((character) => {
             const holder = game
               .players()
@@ -391,6 +408,20 @@ export function describeEvent(game: Game, event: AnyEvent): string {
       return `${name(d['seatId'] as string)} ${d['connected'] ? 'reconnected' : 'disconnected'}.`;
     case 'seating.changed':
       return 'The seating order changed.';
+    case 'game.dealt': {
+      const c = d['counts'] as Record<string, number>;
+      const parts = [
+        `${c['townsfolk']} townsfolk`,
+        `${c['outsider']} outsider${c['outsider'] === 1 ? '' : 's'}`,
+        `${c['minion']} minion${c['minion'] === 1 ? '' : 's'}`,
+        `${c['demon']} demon`,
+      ];
+      if (c['traveller']) parts.push(`${c['traveller']} traveller${c['traveller'] === 1 ? '' : 's'}`);
+      return (
+        `The bag goes round: ${parts.join(', ')}, drawn at random for ${d['seats']} seats. ` +
+        `The shuffle seed is ${d['seed']} — written down now, so the deal can be checked afterwards.`
+      );
+    }
     case 'game.started':
       return `The game begins with ${d['seats']} players. Night ${d['day']} falls.`;
     case 'game.ended':

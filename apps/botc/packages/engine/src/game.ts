@@ -10,6 +10,7 @@ import {
   type Visibility,
   canSee,
 } from './events.js';
+import { rngFrom, shuffle } from './deal.js';
 import { nightOrder } from './scripts.js';
 import {
   type AbilityUse,
@@ -349,6 +350,77 @@ export class Game {
     players.splice(target, 0, moved);
     players.forEach((s, i) => (s.index = i));
     this.emit('seating.changed', { order: players.map((s) => s.id) }, PUBLIC, actorSeatId);
+    return ok(undefined);
+  }
+
+  // ---------------------------------------------------------------- the bag
+
+  /**
+   * Put a set of character tokens in the bag and let the circle draw.
+   *
+   * The Storyteller picks what goes in — that part is genuinely their job — and
+   * then stops choosing. The shuffle is seeded, the seed is announced before a
+   * single token lands, and the assignment falls where it falls. Nobody, this
+   * Storyteller included, gets to decide who sits beside the Demon.
+   *
+   * Must be done in the lobby, before the first night. Afterwards the grimoire is
+   * changed one seat at a time with `stAssignCharacter`, which is the Pit-Hag, the
+   * Drunk and the honest mid-game correction — not a second chance at the seating.
+   */
+  stDeal(actorSeatId: string, characterIds: string[], seed?: string): Result<void> {
+    const st = this.requireStoryteller(actorSeatId);
+    if (!st.ok) return st;
+    if (this.state.phase !== 'lobby') return err('the bag is drawn before the first night, not after');
+
+    const players = this.players();
+    if (players.length === 0) return err('nobody is seated yet');
+    if (characterIds.length !== players.length) {
+      return err(
+        `${characterIds.length} tokens for ${players.length} players — the bag must hold exactly one each`,
+      );
+    }
+
+    const characters: Character[] = [];
+    for (const id of characterIds) {
+      const character = this.character(id);
+      if (!character) return err(`"${id}" is not on this script`);
+      characters.push(character);
+    }
+    if (this.state.seats.some((s) => !s.isStoryteller && s.characterId)) {
+      return err('these seats already hold characters — deal into an empty circle');
+    }
+
+    const actualSeed = seed ?? `${this.now().toString(36)}-${this.makeId('bag').slice(-8)}`;
+    const counts = { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveller: 0 };
+    for (const c of characters) {
+      if (c.team in counts) counts[c.team as keyof typeof counts] += 1;
+    }
+
+    // Announced BEFORE the draw, so the seed cannot be chosen to suit the result.
+    this.emit('game.dealt', { seed: actualSeed, counts, seats: players.length }, PUBLIC, actorSeatId);
+
+    this.state.deal = { seed: actualSeed, at: this.now() };
+    const drawn = shuffle(characters, rngFrom(actualSeed));
+    players.forEach((seat, i) => {
+      const character = drawn[i] as Character;
+      seat.characterId = character.id;
+      seat.believedCharacterId = undefined;
+      seat.handSet = false;
+      seat.alignment = character.team === 'minion' || character.team === 'demon' ? 'evil' : 'good';
+      if (character.team === 'traveller') seat.isTraveller = true;
+      this.emit(
+        'player.character',
+        { seatId: seat.id, characterId: character.id, characterName: character.name, team: character.team },
+        toSeats(seat.id),
+        actorSeatId,
+      );
+      this.emit(
+        'st.grimoire',
+        { seatId: seat.id, change: `${seat.name} drew the ${character.name} (${seat.alignment})` },
+        ST_ONLY,
+        actorSeatId,
+      );
+    });
     return ok(undefined);
   }
 
@@ -1089,6 +1161,7 @@ export class Game {
 
     to.value.characterId = character.id;
     to.value.believedCharacterId = believed?.id;
+    to.value.handSet = true;
     to.value.alignment =
       alignment ?? (character.team === 'minion' || character.team === 'demon' ? 'evil' : 'good');
     if (character.team === 'traveller') to.value.isTraveller = true;

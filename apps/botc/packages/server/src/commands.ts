@@ -47,6 +47,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']) }),
   z.object({ type: z.literal('st_record'), text: z.string() }),
   z.object({ type: z.literal('st_resolve_ability'), abilityId: z.string().optional(), text: z.string().optional() }),
+  z.object({ type: z.literal('st_deal'), characters: z.array(z.string()).min(1), seed: z.string().optional() }),
   z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional(), believes: z.string().optional() }),
   z.object({ type: z.literal('st_set_alignment'), target: z.string(), alignment: z.enum(['good', 'evil']) }),
   z.object({ type: z.literal('st_add_reminder'), target: z.string(), label: z.string(), source: z.string().optional() }),
@@ -177,6 +178,8 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
       return game.stAdvancePhase(seatId);
     case 'st_set_phase':
       return game.stSetPhase(seatId, command.phase);
+    case 'st_deal':
+      return game.stDeal(seatId, command.characters, command.seed);
     case 'st_assign': {
       const to = target(room, command.target);
       return to.ok

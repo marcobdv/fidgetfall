@@ -78,6 +78,12 @@ export interface Seat {
    * Storyteller ever sees both. Unset for everyone who is what they think they are.
    */
   believedCharacterId?: string;
+  /**
+   * True when the Storyteller set this seat's character by hand rather than the
+   * seat drawing it from the bag. Kept so the Storyteller's own view, and the
+   * chronicle afterwards, can say plainly which seats were arranged.
+   */
+  handSet?: boolean;
   alignment?: Alignment;
   reminders: ReminderToken[];
   hasNominatedToday: boolean;
@@ -193,6 +199,8 @@ export interface Nomination {
 }
 
 export interface GameState {
+  /** The seeded draw, if the circle drew rather than being arranged seat by seat. */
+  deal?: { seed: string; at: number };
   id: string;
   name: string;
   joinCode: string;

@@ -197,6 +197,19 @@ export function renderView(view: GameView): string {
     lines.push('  Rule on it with storyteller { action: "resolve_ability", ability_id, text? }.');
   }
 
+  if (view.deal) {
+    lines.push('');
+    if (view.deal.seed) {
+      lines.push(`The bag was drawn, seed ${view.deal.seed}. You did not choose who sits where.`);
+    } else {
+      lines.push('This grimoire was NOT dealt — you arranged it. Adjacency is yours, which means');
+      lines.push('every ability that reads the circle is answering a question you already decided.');
+    }
+    if (view.deal.handSetNames.length) {
+      lines.push(`Set by hand since: ${view.deal.handSetNames.join(', ')}.`);
+    }
+  }
+
   if (view.nightOrder?.length) {
     lines.push('', `Night order — ${view.day <= 1 ? 'first night' : 'every other night'}:`);
     lines.push('  Read the ability out as it is written. Do not shorten it, and do not paraphrase it from memory.');

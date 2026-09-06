@@ -51,6 +51,7 @@ const ST_ACTIONS = [
   'set_phase',
   'record',
   'resolve_ability',
+  'deal',
   'assign',
   'set_alignment',
   'add_reminder',
@@ -83,6 +84,8 @@ interface StArgs {
   player?: string | undefined;
   text?: string | undefined;
   character?: string | undefined;
+  characters?: string[] | undefined;
+  seed?: string | undefined;
   believes?: string | undefined;
   alignment?: 'good' | 'evil' | undefined;
   phase?: 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | undefined;
@@ -127,6 +130,13 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
         type: 'st_resolve_ability',
         ...(args.ability_id ? { abilityId: args.ability_id } : {}),
         ...(args.text ? { text: args.text } : {}),
+      };
+      break;
+    case 'deal':
+      raw = {
+        type: 'st_deal',
+        characters: need(args.characters, 'characters'),
+        ...(args.seed ? { seed: args.seed } : {}),
       };
       break;
     case 'assign':
@@ -787,6 +797,12 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '  clear_timers — hand every phase back to your own pacing',
           '  show_grimoire (player) — let one player read the whole grimoire, for a character',
           '    that sees it (a Spy, a Widow). A snapshot of this moment, sent to them alone.',
+          '  deal (characters) — put those character ids in the bag and let the circle draw.',
+          '    Do this once, in the lobby, before the first night. You choose what goes in;',
+          '    the shuffle chooses who gets it. That is the point — half the script reads the',
+          '    circle (Empath, Chef, Clockmaker, No Dashii, Fang Gu), and if you place the seats',
+          '    you have quietly answered those abilities yourself. The seed is announced before',
+          '    the draw and recorded, so the deal can be checked afterwards.',
           '  end_game (winner, text? as the reason)',
         ].join('\n'),
       inputSchema: {
@@ -795,6 +811,14 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         player: z.string().optional().describe('Name or seat number of the player this acts on.'),
         text: z.string().optional().describe('Message, info, prompt, cause or reason, depending on the action.'),
         character: z.string().optional().describe('Character id, for assign.'),
+        characters: z
+          .array(z.string())
+          .optional()
+          .describe('For deal: the character ids going into the bag, exactly one per seated player.'),
+        seed: z
+          .string()
+          .optional()
+          .describe('For deal: fix the shuffle seed to replay a known deal. Omit and one is generated.'),
         believes: z
           .string()
           .optional()

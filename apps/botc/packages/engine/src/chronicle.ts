@@ -466,6 +466,23 @@ export function writeChronicle(game: Game, viewer: Viewer, options: ChronicleOpt
   out.push(
     `${cardinal(count)} of them — ${list(game.players().map((s) => s.name))} — took ${count === 1 ? 'a seat' : 'their seats'} around the square.`,
   );
+  const deal = game.state.deal;
+  const arranged = game.players().filter((s) => s.handSet && s.characterId).length;
+  if (deal) {
+    out.push(
+      `The bag went round and they drew — shuffle seed \`${deal.seed}\`, written down before a ` +
+        'single token was handed out, so the deal can be replayed from this record. Nobody chose ' +
+        'who sat next to whom.' +
+        (arranged
+          ? ` ${cardinal(arranged)} seat${arranged === 1 ? ' was' : 's were'} changed by hand afterwards.`
+          : ''),
+    );
+  } else if (arranged) {
+    out.push(
+      'This circle was not dealt. The Storyteller placed every character by hand, seating ' +
+        'included — so any ability that reads the circle was answered before the game began.',
+    );
+  }
   const you = viewer.kind === 'seat' ? game.seat(viewer.seatId) : undefined;
   if (you) {
     const seatNo = `${you.index + 1}${nth(you.index + 1)}`;

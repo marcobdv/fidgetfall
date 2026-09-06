@@ -20,6 +20,16 @@ export interface EventPayloads {
   'player.connection': { seatId: string; connected: boolean };
   'seating.changed': { order: string[] };
   'game.started': { day: number; seats: number };
+  /**
+   * Public: the bag was shuffled and drawn. The seed and the team counts are said
+   * out loud so the deal can be replayed from the log afterwards; who drew what
+   * stays in the grimoire until the roll call.
+   */
+  'game.dealt': {
+    seed: string;
+    counts: { townsfolk: number; outsider: number; minion: number; demon: number; traveller: number };
+    seats: number;
+  };
   'game.ended': { winner: Alignment; reason: string };
   'phase.changed': { phase: Phase; day: number; previous: Phase };
 
