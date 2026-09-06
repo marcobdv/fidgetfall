@@ -199,8 +199,10 @@ export function renderView(view: GameView): string {
 
   if (view.nightOrder?.length) {
     lines.push('', `Night order — ${view.day <= 1 ? 'first night' : 'every other night'}:`);
+    lines.push('  Read the ability out as it is written. Do not shorten it, and do not paraphrase it from memory.');
     for (const step of view.nightOrder) {
       lines.push(`  ${step.order}. ${step.characterName}${step.inPlay ? ` — ${step.inPlay}` : ' (not in play)'}`);
+      if (step.ability) lines.push(`     ${step.ability}`);
     }
   }
 

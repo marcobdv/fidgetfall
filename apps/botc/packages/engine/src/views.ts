@@ -132,7 +132,7 @@ export interface GameView {
    * of whoever holds each character. Running the order by hand is how a Storyteller
    * forgets the Exorcist.
    */
-  nightOrder?: { order: number; characterName: string; inPlay?: string }[];
+  nightOrder?: { order: number; characterName: string; inPlay?: string; ability?: string }[];
   /**
    * Storyteller only: abilities used out loud that you have not ruled on yet. The
    * whole point is that one cannot go past you in the noise of a day.
@@ -319,6 +319,7 @@ export function buildView(game: Game, viewer: Viewer): GameView {
               order: (state.day <= 1 ? character.firstNight : character.otherNight) ?? 0,
               characterName: character.name,
               ...(holder ? { inPlay: `${holder.name}${holder.characterId === character.id ? '' : ' (believes it)'}` } : {}),
+              ...(holder && character.ability ? { ability: character.ability } : {}),
             };
           }),
         }
