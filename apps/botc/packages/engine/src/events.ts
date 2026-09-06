@@ -30,7 +30,12 @@ export interface EventPayloads {
     counts: { townsfolk: number; outsider: number; minion: number; demon: number; traveller: number };
     seats: number;
   };
-  'game.ended': { winner: Alignment; reason: string };
+  'game.ended': {
+    winner: Alignment;
+    reason: string;
+    /** Players who also won by a bargain the Storyteller struck and is honouring. */
+    alsoWon?: { seatId: string; name: string }[];
+  };
   'phase.changed': { phase: Phase; day: number; previous: Phase };
 
   'chat.public': { fromSeatId: string; fromName: string; text: string };

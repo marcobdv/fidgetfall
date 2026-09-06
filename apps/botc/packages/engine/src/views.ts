@@ -424,8 +424,13 @@ export function describeEvent(game: Game, event: AnyEvent): string {
     }
     case 'game.started':
       return `The game begins with ${d['seats']} players. Night ${d['day']} falls.`;
-    case 'game.ended':
-      return `The game is over: ${d['winner']} wins. ${d['reason']}`;
+    case 'game.ended': {
+      const also = (d['alsoWon'] ?? []) as { name: string }[];
+      const bargain = also.length
+        ? ` And by a bargain the Storyteller made and kept: ${also.map((a) => a.name).join(', ')}.`
+        : '';
+      return `The game is over: ${d['winner']} wins. ${d['reason']}${bargain}`;
+    }
     case 'phase.changed':
       return `Phase: ${d['phase']} (day ${d['day']}).`;
     case 'chat.public':
@@ -532,6 +537,12 @@ export function describeEvent(game: Game, event: AnyEvent): string {
     case 'player.claim.observed':
       return `${name(d['fromSeatId'] as string)} said something private to ${name(d['toSeatId'] as string)}.`;
     case 'nomination.made':
+      if (d['kind'] === 'storyteller') {
+        return (
+          `${d['nominatorName']} nominates the STORYTELLER. If this carries, and the Atheist is in ` +
+          'this game, good wins on the spot. Storyteller — answer the charge.'
+        );
+      }
       return (
         `${d['nominatorName']} nominates ${d['nomineeName']}${d['kind'] === 'exile' ? ' for exile' : ''}. ` +
         `${d['nomineeName']}, answer the charge — no hands go up until you have.`

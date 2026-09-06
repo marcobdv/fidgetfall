@@ -47,7 +47,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_set_phase'), phase: z.enum(['night', 'day', 'gather', 'nominations', 'dusk']) }),
   z.object({ type: z.literal('st_record'), text: z.string() }),
   z.object({ type: z.literal('st_resolve_ability'), abilityId: z.string().optional(), text: z.string().optional() }),
-  z.object({ type: z.literal('st_deal'), characters: z.array(z.string()).min(1), seed: z.string().optional() }),
+  z.object({ type: z.literal('st_deal'), characters: z.array(z.string()).min(1), seed: z.string().optional(), announce_counts: z.object({ townsfolk: z.number().int(), outsider: z.number().int(), minion: z.number().int(), demon: z.number().int(), traveller: z.number().int() }).optional() }),
   z.object({ type: z.literal('st_assign'), target: z.string(), character: z.string(), alignment: z.enum(['good', 'evil']).optional(), believes: z.string().optional() }),
   z.object({ type: z.literal('st_set_alignment'), target: z.string(), alignment: z.enum(['good', 'evil']) }),
   z.object({ type: z.literal('st_add_reminder'), target: z.string(), label: z.string(), source: z.string().optional() }),
@@ -66,7 +66,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('st_cancel_nomination') }),
   z.object({ type: z.literal('st_set_on_block'), target: z.string().nullable() }),
   z.object({ type: z.literal('st_move_seat'), target: z.string(), toIndex: z.number().int() }),
-  z.object({ type: z.literal('st_end_game'), winner: z.enum(['good', 'evil']), reason: z.string() }),
+  z.object({ type: z.literal('st_end_game'), winner: z.enum(['good', 'evil']), reason: z.string(), also_won: z.array(z.string()).optional() }),
   z.object({
     type: z.literal('st_set_timer'),
     key: z.enum(['night', 'day', 'gather', 'nominations', 'opening', 'dusk', 'vote', 'defence']),
@@ -89,6 +89,11 @@ export function resolveSeat(room: Room, reference: string): Seat | undefined {
   const lower = wanted.toLowerCase();
   const byName = players.find((s) => s.name.toLowerCase() === lower);
   if (byName) return byName;
+  // "storyteller" names the Storyteller's seat. They are not a player, and almost
+  // every command that takes a name will refuse them — but on a script with the
+  // Atheist on it they can be nominated, and a player has to be able to say so.
+  const st = room.game.storyteller;
+  if (lower === 'storyteller' || lower === 'the storyteller' || st.name.toLowerCase() === lower) return st;
   if (/^\d+$/.test(wanted)) {
     const index = Number(wanted) - 1;
     const bySeat = players[index];
@@ -179,7 +184,7 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
     case 'st_set_phase':
       return game.stSetPhase(seatId, command.phase);
     case 'st_deal':
-      return game.stDeal(seatId, command.characters, command.seed);
+      return game.stDeal(seatId, command.characters, command.seed, command.announce_counts);
     case 'st_assign': {
       const to = target(room, command.target);
       return to.ok
@@ -259,8 +264,15 @@ function dispatch(room: Room, seatId: string, command: Command): Result<unknown>
       const to = target(room, command.target);
       return to.ok ? game.stMoveSeat(seatId, to.value.id, command.toIndex) : to;
     }
-    case 'st_end_game':
-      return game.stEndGame(seatId, command.winner, command.reason);
+    case 'st_end_game': {
+      const also: string[] = [];
+      for (const name of command.also_won ?? []) {
+        const seat = target(room, name);
+        if (!seat.ok) return seat;
+        also.push(seat.value.id);
+      }
+      return game.stEndGame(seatId, command.winner, command.reason, also);
+    }
     case 'st_set_timer':
       return game.stSetTimer(seatId, command.key, command.seconds);
     case 'st_clear_timers':

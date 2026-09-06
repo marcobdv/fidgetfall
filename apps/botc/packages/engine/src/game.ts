@@ -367,7 +367,12 @@ export class Game {
    * changed one seat at a time with `stAssignCharacter`, which is the Pit-Hag, the
    * Drunk and the honest mid-game correction — not a second chance at the seating.
    */
-  stDeal(actorSeatId: string, characterIds: string[], seed?: string): Result<void> {
+  stDeal(
+    actorSeatId: string,
+    characterIds: string[],
+    seed?: string,
+    announceCounts?: { townsfolk: number; outsider: number; minion: number; demon: number; traveller: number },
+  ): Result<void> {
     const st = this.requireStoryteller(actorSeatId);
     if (!st.ok) return st;
     if (this.state.phase !== 'lobby') return err('the bag is drawn before the first night, not after');
@@ -397,7 +402,29 @@ export class Game {
     }
 
     // Announced BEFORE the draw, so the seed cannot be chosen to suit the result.
-    this.emit('game.dealt', { seed: actualSeed, counts, seats: players.length }, PUBLIC, actorSeatId);
+    // The counts may be a lie, and there is exactly one character that licenses it:
+    // an Atheist game has no evil in the bag at all, and saying so out loud would
+    // end the game before the first night. When they are a lie, the truth goes into
+    // the Storyteller's own log in the same breath, so the record still holds it.
+    this.emit(
+      'game.dealt',
+      { seed: actualSeed, counts: announceCounts ?? counts, seats: players.length },
+      PUBLIC,
+      actorSeatId,
+    );
+    if (announceCounts) {
+      this.emit(
+        'st.record',
+        {
+          text:
+            `The bag was announced as ${announceCounts.minion} minion(s) and ${announceCounts.demon} demon(s). ` +
+            `It actually held ${counts.minion} and ${counts.demon}: ` +
+            `${counts.townsfolk} townsfolk, ${counts.outsider} outsider(s), and nothing evil.`,
+        },
+        ST_ONLY,
+        actorSeatId,
+      );
+    }
 
     this.state.deal = { seed: actualSeed, at: this.now() };
     const drawn = shuffle(characters, rngFrom(actualSeed));
@@ -491,14 +518,27 @@ export class Game {
     return ok(next);
   }
 
-  stEndGame(actorSeatId: string, winner: Alignment, reason: string): Result<void> {
+  stEndGame(actorSeatId: string, winner: Alignment, reason: string, alsoWon?: string[]): Result<void> {
     const st = this.requireStoryteller(actorSeatId);
     if (!st.ok) return st;
     if (this.state.phase === 'over') return err('this game is already over');
+    // A bargain the Storyteller struck privately and is now honouring. It is named
+    // out loud at the end, because a deal nobody can check is not a deal.
+    const named: { seatId: string; name: string }[] = [];
+    for (const id of alsoWon ?? []) {
+      const seat = this.requirePlayer(id);
+      if (!seat.ok) return seat;
+      named.push({ seatId: seat.value.id, name: seat.value.name });
+    }
     this.state.phase = 'over';
     this.state.winner = winner;
     this.state.endedReason = reason;
-    this.emit('game.ended', { winner, reason }, PUBLIC, actorSeatId);
+    this.emit(
+      'game.ended',
+      { winner, reason, ...(named.length ? { alsoWon: named } : {}) },
+      PUBLIC,
+      actorSeatId,
+    );
     // The roll call. Every table does this and the server should not make the
     // Storyteller type it out: once the game is over, everyone is named.
     this.emit(
@@ -1580,6 +1620,15 @@ export class Game {
       );
     }
     const alive = players.filter((s) => s.alive);
+    if (alive.length <= 2 && assigned.length > 0 && !assigned.some((s) => s.alignment === 'evil')) {
+      // An Atheist game: nobody is evil, so the usual clock does not apply. Good
+      // simply runs out of town, and loses for never having put you up.
+      this.emit(
+        'system.notice',
+        { text: 'Two players remain and there is no evil in this game — good has run out of town.' },
+        ST_ONLY,
+      );
+    }
     if (alive.length <= 2 && alive.some((s) => s.alignment === 'evil')) {
       this.emit(
         'system.notice',
@@ -1591,10 +1640,24 @@ export class Game {
 
   // ------------------------------------------------------------ nominations
 
+  /**
+   * True when the Atheist is printed on this script. The token being on the sheet
+   * is the whole mechanism: the town can see that the Storyteller might be in this
+   * game, and may put them up for it, whether or not the Atheist was actually dealt.
+   */
+  storytellerIsNominable(): boolean {
+    return this.state.script.characters.some((c) => c.id === 'atheist');
+  }
+
   nominate(actorSeatId: string, nomineeSeatId: string): Result<Nomination> {
     const from = this.requirePlayer(actorSeatId);
     if (!from.ok) return from;
-    const to = this.requirePlayer(nomineeSeatId);
+    const nominee = this.seat(nomineeSeatId);
+    const againstStoryteller = !!nominee?.isStoryteller;
+    if (againstStoryteller && !this.storytellerIsNominable()) {
+      return err('the Storyteller is not a player');
+    }
+    const to = againstStoryteller ? ok(nominee as Seat) : this.requirePlayer(nomineeSeatId);
     if (!to.ok) return to;
     if (this.state.phase !== 'nominations') return err('nominations are not open');
     if (this.activeNomination()) return err('a nomination is already in progress');
@@ -1607,7 +1670,7 @@ export class Game {
     const nomination: Nomination = {
       id: this.makeId('nom'),
       day: this.state.day,
-      kind: to.value.isTraveller ? 'exile' : 'execution',
+      kind: againstStoryteller ? 'storyteller' : to.value.isTraveller ? 'exile' : 'execution',
       nominatorSeatId: from.value.id,
       nomineeSeatId: to.value.id,
       state: defence > 0 ? 'defence' : 'voting',
@@ -1694,7 +1757,7 @@ export class Game {
     if (!from.value.restrictions.vote) return err('you cannot vote');
 
     let ghost = false;
-    if (!from.value.alive && nomination.kind === 'execution') {
+    if (!from.value.alive && nomination.kind !== 'exile') {
       if (vote) {
         if (!from.value.ghostVote) return err('you have already spent your ghost vote');
         from.value.ghostVote = false;
@@ -1846,7 +1909,18 @@ export class Game {
       return;
     }
     this.emit('execution', { seatId: seat.id, name: seat.name }, PUBLIC, actorSeatId);
-    if (seat.alive) this.kill(seat, 'execution', actorSeatId);
     this.state.onBlockSeatId = undefined;
+    if (seat.isStoryteller) {
+      // The Atheist's whole ability, and the only thing it does. Whether the
+      // Atheist was ever dealt is beside the point — the town spent an execution
+      // on the possibility and was right to.
+      this.emit(
+        'system.notice',
+        { text: 'You have been executed. If the Atheist is in play, good has won — call it.' },
+        ST_ONLY,
+      );
+      return;
+    }
+    if (seat.alive) this.kill(seat, 'execution', actorSeatId);
   }
 }

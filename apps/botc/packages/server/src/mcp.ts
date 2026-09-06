@@ -86,6 +86,8 @@ interface StArgs {
   character?: string | undefined;
   characters?: string[] | undefined;
   seed?: string | undefined;
+  announce_counts?: { townsfolk: number; outsider: number; minion: number; demon: number; traveller: number } | undefined;
+  also_won?: string[] | undefined;
   believes?: string | undefined;
   alignment?: 'good' | 'evil' | undefined;
   phase?: 'night' | 'day' | 'gather' | 'nominations' | 'dusk' | undefined;
@@ -137,6 +139,7 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
         type: 'st_deal',
         characters: need(args.characters, 'characters'),
         ...(args.seed ? { seed: args.seed } : {}),
+        ...(args.announce_counts ? { announce_counts: args.announce_counts } : {}),
       };
       break;
     case 'assign':
@@ -245,6 +248,7 @@ function toCommand(args: StArgs): { ok: true; command: Command } | { ok: false; 
         type: 'st_end_game',
         winner: need(args.winner, 'winner'),
         reason: args.text ?? 'The Storyteller called the game.',
+        ...(args.also_won ? { also_won: args.also_won } : {}),
       };
       break;
   }
@@ -803,7 +807,7 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           '    circle (Empath, Chef, Clockmaker, No Dashii, Fang Gu), and if you place the seats',
           '    you have quietly answered those abilities yourself. The seed is announced before',
           '    the draw and recorded, so the deal can be checked afterwards.',
-          '  end_game (winner, text? as the reason)',
+          '  end_game (winner, text? as the reason, also_won? for a bargain you are honouring)',
         ].join('\n'),
       inputSchema: {
         seat_token: SEAT_TOKEN,
@@ -819,6 +823,24 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           .string()
           .optional()
           .describe('For deal: fix the shuffle seed to replay a known deal. Omit and one is generated.'),
+        announce_counts: z
+          .object({
+            townsfolk: z.number().int(),
+            outsider: z.number().int(),
+            minion: z.number().int(),
+            demon: z.number().int(),
+            traveller: z.number().int(),
+          })
+          .optional()
+          .describe(
+            'For deal: announce these counts to the town instead of the real ones. Only an Atheist ' +
+              'game needs this — a bag with no evil in it announces itself. The truth is written to ' +
+              'your own record in the same breath.',
+          ),
+        also_won: z
+          .array(z.string())
+          .optional()
+          .describe('For end_game: players who also won by a bargain you struck. Named at the roll call.'),
         believes: z
           .string()
           .optional()

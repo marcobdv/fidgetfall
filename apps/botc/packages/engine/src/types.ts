@@ -159,7 +159,7 @@ export interface Claim {
   at: number;
 }
 
-export type NominationKind = 'execution' | 'exile';
+export type NominationKind = 'execution' | 'exile' | 'storyteller';
 
 export type NominationResult =
   | 'on-block'

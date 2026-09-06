@@ -1,0 +1,32 @@
+[
+  {
+    "id": "_meta",
+    "name": "Trouble Brewing, and the Atheist",
+    "author": "The Pandemonium Institute",
+    "edition": "base",
+    "description": "Trouble Brewing exactly as it is, with one extra token on the sheet: the Atheist. That is the whole change, and it is not a small one. The Atheist may be in this game or it may not \u2014 the Storyteller decides, and can just as easily drop a Drunk into the same slot. So every reading you get, every death in the night, every number that does not add up, has two explanations from the first morning onwards, and you will not be told which. Any living player may nominate the Storyteller."
+  },
+  "washerwoman",
+  "librarian",
+  "investigator",
+  "chef",
+  "empath",
+  "fortuneteller",
+  "undertaker",
+  "monk",
+  "ravenkeeper",
+  "virgin",
+  "slayer",
+  "soldier",
+  "mayor",
+  "butler",
+  "drunk",
+  "recluse",
+  "saint",
+  "poisoner",
+  "spy",
+  "scarletwoman",
+  "baron",
+  "imp",
+  "atheist"
+]
